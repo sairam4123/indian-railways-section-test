@@ -1,0 +1,11 @@
+[project]
+name = "section-train-test"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.10.5",
+    "ortools>=9.14.6206",
+    "simpy>=4.1.1",
+]

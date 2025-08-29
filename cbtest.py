@@ -360,9 +360,34 @@ train2.schedule_stop(KKDI, 10, 20, 1)
 train2.schedule_stop(PDKT, 55, 65, 0)
 train2.schedule_stop(TPJ, 110, 115, 1)
 
+train3 = Train(env, "T3", [], max_speed=100, priority=1, length=280)
+train3.schedule_stop(TPJ, 20, 25, 1)
+train3.schedule_stop(PDKT, 85, 90, 0)
+train3.schedule_stop(KKDI, 125, 130, 1)
+
+train4 = Train(env, "T4", [], max_speed=110, priority=2, length=320)
+train4.schedule_stop(KKDI, 40, 45, 1)
+train4.schedule_stop(PDKT, 95, 100, 1)
+train4.schedule_stop(TPJ, 150, 155, 0)
+
+train5 = Train(env, "T5", [], max_speed=90, priority=3, length=250)
+train5.schedule_stop(TPJ, 60, 65, 0)
+train5.schedule_stop(PDKT, 120, 125, 1)
+train5.schedule_stop(KKDI, 170, 175, 1)
+
+train6 = Train(env, "T6", [], max_speed=110, priority=1, length=300)
+train6.schedule_stop(KKDI, 75, 80, 0)
+train6.schedule_stop(PDKT, 130, 135, 1)
+train6.schedule_stop(TPJ, 185, 190, 1)
+
+train7 = Train(env, "T7", [], max_speed=100, priority=2, length=270)
+train7.schedule_stop(TPJ, 95, 100, 1)
+train7.schedule_stop(PDKT, 150, 155, 0)
+train7.schedule_stop(KKDI, 200, 205, 1)
+
 env.run()
 
-trains = [train1, train2]
+trains = [train1, train2, train3, train4, train5, train6, train7]
 train_logs = sum([train.log.entries for train in trains], [])
 
 train_logs.sort(key=lambda x: (x[0], x[1]))

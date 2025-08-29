@@ -174,7 +174,7 @@ plt.xlabel("Stations (left to right)")
 plt.title("Single-Line with Loop Crossings: Y = Time, X = Stations")
 plt.grid(True, which="both", axis="both")
 plt.legend()
-# plt.gca().invert_yaxis()  # optional: make time increase downward
+plt.gca().invert_yaxis()  # optional: make time increase downward
 plt.tight_layout()
 plt.show()
 # -----------------------------

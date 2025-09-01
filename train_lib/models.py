@@ -215,6 +215,7 @@ class Train:
         self.schedule_pointer = 0
         self.weight = weight
         self.log = TrainLog(self)
+        self.direction = "UP"
 
         self.hp = hp
 
@@ -291,7 +292,8 @@ class Train:
 
             # Run inside the block while holding the lock
             try:
-                run = block._run_minutes(self)
+                random_delay = random.uniform(0, 15) # Approximate TSR, PSR, Maintenance works
+                run = block._run_minutes(self) + (random_delay if ENABLE_RANDOM_DELAYS else 0)
                 yield self.env.timeout(run)
                 self.log.log(f"Exited {block.name} - approaching {next_sp.station.stn_code}")
                 headway = block._headway_mins(self)
@@ -316,6 +318,9 @@ class Train:
         self.log.mark_arrival(sp.station)
         yield from sp.station.accept(self, sp)
     
+    def set_direction(self, direction: str):
+        self.direction = direction
+
     def get_next_schedule_point(self) -> 'SchedulePoint | None':
         return self.schedule[self.schedule_pointer + 1] if self.schedule_pointer + 1 < len(self.schedule) else None
 

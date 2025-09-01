@@ -1,0 +1,7 @@
+trains:
+  - train:
+      id: T1
+      name: Train 1
+      number: 12605
+      length: 300
+      weight: 200

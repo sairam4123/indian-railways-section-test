@@ -3,186 +3,166 @@ import random
 import simpy
 import simpy.resources.resource
 
+from networks.kkdi_tpj_network import create_tpj_kkdi_network
 from train_lib.models import Train, Station, Track, BlockSection
 from train_lib.constants import ARRIVAL, DEPARTURE
 
 env = simpy.Environment()
 
-TPJ_main = Track(env, "TPJ_main", has_platform=True, length=600)
-TPJ_loop1 = Track(env, "TPJ_loop1", has_platform=True, length=400)
-TPJ_loop2 = Track(env, "TPJ_loop2", has_platform=True, length=400)
-TPJ = Station(env, 'tpj', [TPJ_main, TPJ_loop1, TPJ_loop2])
-
-KRUR_main = Track(env, "KRUR_main", has_platform=False, length=600)
-KRUR_loop1 = Track(env, "KRUR_loop1", has_platform=True, length=400)
-KRUR_loop2 = Track(env, "KRUR_loop2", has_platform=True, length=400)
-KRUR = Station(env, 'krur', [KRUR_main, KRUR_loop1, KRUR_loop2])
-
-PDKT_main = Track(env, "PDKT_main", has_platform=True, length=600)
-PDKT_loop1 = Track(env, "PDKT_loop1", has_platform=True, length=400)
-PDKT_loop2 = Track(env, "PDKT_loop2", has_platform=True, length=400)
-PDKT_loop3 = Track(env, "PDKT_loop3", has_platform=True, length=500)
-PDKT = Station(env, 'pdkt', [PDKT_main, PDKT_loop1, PDKT_loop2, PDKT_loop3])
-
-CTND_main = Track(env, "CTND_main", has_platform=False, length=600)
-CTND_loop1 = Track(env, "CTND_loop1", has_platform=True, length=400)
-CTND_loop2 = Track(env, "CTND_loop2", has_platform=True, length=400)
-CTND_loop3 = Track(env, "CTND_loop3", has_platform=True, length=400)
-CTND = Station(env, 'ctnd', [CTND_main, CTND_loop1, CTND_loop2, CTND_loop3])
-
-KKDI_main = Track(env, "KKDI_main", has_platform=True, length=600)
-KKDI_loop1 = Track(env, "KKDI_loop1", has_platform=True, length=400)
-KKDI_loop2 = Track(env, "KKDI_loop2", has_platform=True, length=400)
-KKDI_loop3 = Track(env, "KKDI_loop3", has_platform=True, length=400)
-KKDI_loop4 = Track(env, "KKDI_loop4", has_platform=True, length=400)
-KKDI = Station(env, 'kkdi', [KKDI_main, KKDI_loop1, KKDI_loop2, KKDI_loop3, KKDI_loop4])
-
-# PDKT_KKDI = BlockEdge(env, "PDKT_KKDI", PDKT, KKDI, length_km=60, line_speed=110, bidirectional=False)
-# KKDI_PDKT = BlockEdge(env, "KKDI_PDKT", KKDI, PDKT, length_km=60, line_speed=110, bidirectional=False)
-
-# PDKT_TPJ = BlockEdge(env, "PDKT_TPJ", PDKT, TPJ, length_km=80, line_speed=100, bidirectional=False)
-# TPJ_PDKT = BlockEdge(env, "TPJ_PDKT", TPJ, PDKT, length_km=80, line_speed=100, bidirectional=False)
-
-
-
-TPJ_KRUR = BlockSection(env, "TPJ_KRUR", TPJ, KRUR, length_km=27, line_speed=100, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-KRUR_PDKT = BlockSection(env, "KRUR_PDKT", KRUR, PDKT, length_km=32, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-PDKT_CTND = BlockSection(env, "PDKT_CTND", PDKT, CTND, length_km=26, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-CTND_KKDI = BlockSection(env, "CTND_KKDI", CTND, KKDI, length_km=13, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-
-
-KRUR_TPJ = BlockSection(env, "KRUR_TPJ", KRUR, TPJ, length_km=27, line_speed=100, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-PDKT_KRUR = BlockSection(env, "PDKT_KRUR", PDKT, KRUR, length_km=32, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-CTND_PDKT = BlockSection(env, "CTND_PDKT", CTND, PDKT, length_km=26, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-KKDI_CTND = BlockSection(env, "KKDI_CTND", KKDI, CTND, length_km=13, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-
-KRUR_TPJ_4 = BlockSection(env, "KRUR_TPJ", KRUR, TPJ, length_km=27, line_speed=100, bidirectional=False, electric=True, signal_num=4, signal_aspects=4)
-PDKT_KRUR_4 = BlockSection(env, "PDKT_KRUR", PDKT, KRUR, length_km=32, line_speed=110, bidirectional=False, electric=True, signal_num=4, signal_aspects=4)
-CTND_PDKT_4 = BlockSection(env, "CTND_PDKT", CTND, PDKT, length_km=26, line_speed=110, bidirectional=False, electric=True, signal_num=4, signal_aspects=4)
-KKDI_CTND_4 = BlockSection(env, "KKDI_CTND", KKDI, CTND, length_km=13, line_speed=110, bidirectional=False, electric=True, signal_num=4, signal_aspects=4)
-
-
-TPJ_KRUR_3 = BlockSection(env, "TPJ_KRUR", TPJ, KRUR, length_km=27, line_speed=100, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-KRUR_PDKT_3 = BlockSection(env, "KRUR_PDKT", KRUR, PDKT, length_km=32, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-PDKT_CTND_3 = BlockSection(env, "PDKT_CTND", PDKT, CTND, length_km=26, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-CTND_KKDI_3 = BlockSection(env, "CTND_KKDI", CTND, KKDI, length_km=13, line_speed=100, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-
-
+[[TPJ, KRMG, KRUR, VEL, PDKT, TYM, CTND, KKDI], block_sections, *loop_tracks] = create_tpj_kkdi_network(env)
 
 # Existing trains
-train1 = Train(env, "T1", [], max_speed=80, priority=1, length=300, weight=1173, initial_delay=0, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
-train1.schedule_stop(TPJ, 0, 10, 1)
-train1.schedule_stop(KRUR, 40, 45, 1)
-train1.schedule_stop(PDKT, 70, 75, 0)
-train1.schedule_stop(CTND, 100, 105, 1)
-train1.schedule_stop(KKDI, 110, 115, 0)
+# train1 = Train(env, "T1", [], max_speed=80, priority=1, length=300, weight=1173, initial_delay=0, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
+# train1.schedule_stop(TPJ, 0, 10, 1)
+# train1.schedule_stop(KRMG, 20, 25, 0)
+# train1.schedule_stop(KRUR, 40, 45, 1)
+# train1.schedule_stop(VEL, 50, 50, 0)
+# train1.schedule_stop(PDKT, 70, 75, 0)
+# train1.schedule_stop(TYM, 85, 90, 0)
+# train1.schedule_stop(CTND, 100, 105, 1)
+# train1.schedule_stop(KKDI, 110, 115, 0)
 
-train2 = Train(env, "T2", [], max_speed=110, priority=2, length=300, weight=2244, initial_delay=0, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
-train2.schedule_stop(KKDI, 10, 20, 1)
-train2.schedule_stop(CTND, 35, 40, 1)
-train2.schedule_stop(PDKT, 55, 65, 0)
-train2.schedule_stop(KRUR, 70, 75, 1)
-train2.schedule_stop(TPJ, 110, 115, 1)
+# 0 = 5:30
+# 10 = 5:40
+# 33 = 6:03
+# 35 = 6:05
+# 80 = 06:50
+# 85 = 06:55
 
-train3 = Train(env, "T3", [], max_speed=60, priority=1, length=280, weight=1170, initial_delay=0, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
-train3.schedule_stop(TPJ, 20, 25, 1)
-train3.schedule_stop(KRUR, 40, 40, 0) # Run through main
-train3.schedule_stop(PDKT, 85, 90, 0)
-train3.schedule_stop(CTND, 100, 100, 0) # Run through main
-train3.schedule_stop(KKDI, 125, 130, 1)
+train2 = Train(env, "T2", [], max_speed=110, priority=2, length=564, weight=1000, initial_delay=0, hp=6120, accel_mps2=1.2, decel_mps2=0.5)
+train2.schedule_stop(KKDI, 0, 10, 0)
+train2.schedule_stop(CTND, 15, 15, 0)
+train2.schedule_stop(TYM, 25, 25, 0)
+train2.schedule_stop(PDKT, 33, 35, 0)
+train2.schedule_stop(VEL, 45, 45, 0)
+train2.schedule_stop(KRUR, 60, 60, 0)
+train2.schedule_stop(KRMG, 75, 75, 0)
+train2.schedule_stop(TPJ, 80, 85, 0)
+train2.set_direction("DOWN")
 
-train4 = Train(env, "T4", [], max_speed=120, priority=2, length=320, weight=2580, initial_delay=0, hp=4500, accel_mps2=0.5, decel_mps2=0.5)
-train4.schedule_stop(KKDI, 40, 45, 1)
-train4.schedule_stop(CTND, 60, 65, 1)
-train4.schedule_stop(PDKT, 95, 100, 1)
-train4.schedule_stop(KRUR, 130, 135, 1)
-train4.schedule_stop(TPJ, 150, 155, 0)
+# train3 = Train(env, "T3", [], max_speed=60, priority=1, length=280, weight=1170, initial_delay=0, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
+# train3.schedule_stop(TPJ, 20, 25, 1)
+# train3.schedule_stop(KRMG, 30, 30, 1)
+# train3.schedule_stop(KRUR, 40, 40, 0) # Run through main
+# train3.schedule_stop(VEL, 60, 60, 0)
+# train3.schedule_stop(PDKT, 85, 90, 0)
+# train3.schedule_stop(TYM, 95, 100, 0)
+# train3.schedule_stop(CTND, 100, 100, 0) # Run through main
+# train3.schedule_stop(KKDI, 125, 130, 1)
 
-train5 = Train(env, "T5", [], max_speed=90, priority=3, length=250, weight=1277, initial_delay=0, hp=4500, accel_mps2=0.3, decel_mps2=0.2)
-train5.schedule_stop(TPJ, 60, 65, 0)
-train5.schedule_stop(KRUR, 90, 90, 0)
-train5.schedule_stop(PDKT, 120, 120, 0)
-train5.schedule_stop(CTND, 140, 140, 0)
-train5.schedule_stop(KKDI, 170, 175, 1)
+# train4 = Train(env, "T4", [], max_speed=120, priority=2, length=320, weight=2580, initial_delay=0, hp=4500, accel_mps2=0.5, decel_mps2=0.5)
+# train4.schedule_stop(KKDI, 40, 45, 1)
+# train4.schedule_stop(CTND, 60, 65, 1)
+# train4.schedule_stop(TYM, 80, 85, 1)
+# train4.schedule_stop(PDKT, 95, 100, 1)
+# train4.schedule_stop(VEL, 110, 115, 1)
+# train4.schedule_stop(KRUR, 130, 135, 1)
+# train4.schedule_stop(KRMG, 140, 140, 0)
+# train4.schedule_stop(TPJ, 150, 155, 0)
 
-train6 = Train(env, "T6", [], max_speed=160, priority=1, length=300, weight=4000, initial_delay=0, hp=12000, accel_mps2=0.5, decel_mps2=0.5)
-train6.schedule_stop(KKDI, 75, 80, 0)
-train6.schedule_stop(CTND, 100, 100, 0) # Run through main
-train6.schedule_stop(PDKT, 130, 130, 0) # Non-stop run (run-through on the main-line)
-train6.schedule_stop(KRUR, 160, 160, 0)
-train6.schedule_stop(TPJ, 185, 190, 1)
+# train5 = Train(env, "T5", [], max_speed=90, priority=3, length=250, weight=1277, initial_delay=0, hp=4500, accel_mps2=0.3, decel_mps2=0.2)
+# train5.schedule_stop(TPJ, 60, 65, 2)
+# train5.schedule_stop(KRMG, 80, 80, 0)
+# train5.schedule_stop(KRUR, 90, 90, 0)
+# train5.schedule_stop(VEL, 110, 110, 0)
+# train5.schedule_stop(PDKT, 150, 150, 0)
+# train5.schedule_stop(TYM, 210, 210, 0)
+# train5.schedule_stop(CTND, 220, 220, 0)
+# train5.schedule_stop(KKDI, 270, 280, 1)
 
-train7 = Train(env, "T7", [], max_speed=100, priority=2, length=270, weight=3600, initial_delay=0, hp=3125, accel_mps2=0.5, decel_mps2=0.5)
-train7.schedule_stop(TPJ, 95, 100, 1)
-train7.schedule_stop(KRUR, 120, 125, 1)
-train7.schedule_stop(PDKT, 150, 155, 0)
-train7.schedule_stop(CTND, 180, 185, 1)
-train7.schedule_stop(KKDI, 200, 205, 1)
+# train6 = Train(env, "T6", [], max_speed=160, priority=1, length=300, weight=4000, initial_delay=0, hp=12000, accel_mps2=0.5, decel_mps2=0.5)
+# train6.schedule_stop(KKDI, 75, 80, 0)
+# train6.schedule_stop(CTND, 100, 100, 0) # Run through main
+# train6.schedule_stop(TYM, 120, 120, 0)
+# train6.schedule_stop(PDKT, 130, 140, 0)
+# train6.schedule_stop(VEL, 150, 150, 0)
+# train6.schedule_stop(KRUR, 160, 160, 0)
+# train6.schedule_stop(KRMG, 170, 170, 0)
+# train6.schedule_stop(TPJ, 185, 190, 1)
 
-train8 = Train(env, "T8", [], max_speed=160, priority=0, length=384, weight=430, initial_delay=0, hp=9010, accel_mps2=0.15, decel_mps2=0.18) # Non stop vande bharat express
-train8.schedule_stop(KKDI, 10, 10, 0)
-train8.schedule_stop(CTND, 30, 30, 0)
-train8.schedule_stop(PDKT, 50, 50, 0)
-train8.schedule_stop(KRUR, 70, 70, 0)
-train8.schedule_stop(TPJ, 90, 90, 0)
+# train7 = Train(env, "T7", [], max_speed=100, priority=2, length=270, weight=3600, initial_delay=0, hp=3125, accel_mps2=0.5, decel_mps2=0.5)
+# train7.schedule_stop(TPJ, 95, 100, 1)
+# train7.schedule_stop(KRMG, 110, 115, 0)
+# train7.schedule_stop(KRUR, 120, 125, 1)
+# train7.schedule_stop(VEL, 130, 135, 0)
+# train7.schedule_stop(PDKT, 150, 155, 0)
+# train7.schedule_stop(TYM, 170, 175, 0)
+# train7.schedule_stop(CTND, 180, 185, 1)
+# train7.schedule_stop(KKDI, 200, 205, 1)
 
-# === EXTRA TRAINS (T9–T16) ===
+# train8 = Train(env, "T8", [], max_speed=160, priority=0, length=384, weight=430, initial_delay=0, hp=9010, accel_mps2=0.7, decel_mps2=0.7) # Non stop vande bharat express
+# train8.schedule_stop(KKDI, 10, 10, 0)
+# train8.schedule_stop(CTND, 40, 40, 0)
+# train8.schedule_stop(TYM, 60, 60, 0)
+# train8.schedule_stop(PDKT, 70, 70, 0)
+# train8.schedule_stop(VEL, 90, 90, 0)
+# train8.schedule_stop(KRUR, 105, 105, 0)
+# train8.schedule_stop(KRMG, 115, 115, 0)
+# train8.schedule_stop(TPJ, 220, 220, 0)
 
-train9 = Train(env, "T9", [], max_speed=80, priority=2, length=300, weight=4100, initial_delay=0, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
-train9.schedule_stop(TPJ, 15, 20, 1)
-train9.schedule_stop(KRUR, 50, 55, 1)
-train9.schedule_stop(PDKT, 85, 90, 0)
-train9.schedule_stop(CTND, 115, 120, 1)
-train9.schedule_stop(KKDI, 130, 135, 0)
+# # # === EXTRA TRAINS (T9–T16) ===
 
-train10 = Train(env, "T10", [], max_speed=110, priority=1, length=310, weight=4050, initial_delay=0, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
-train10.schedule_stop(KKDI, 20, 25, 1)
-train10.schedule_stop(CTND, 45, 50, 0)
-train10.schedule_stop(PDKT, 70, 75, 0)
-train10.schedule_stop(KRUR, 95, 100, 1)
-train10.schedule_stop(TPJ, 125, 130, 1)
+# train9 = Train(env, "T9", [], max_speed=80, priority=2, length=300, weight=4100, initial_delay=0, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
+# train9.schedule_stop(TPJ, 15, 20, 1)
+# train9.schedule_stop(KRMG, 30, 35, 1)
+# train9.schedule_stop(KRUR, 50, 55, 1)
+# train9.schedule_stop(VEL, 70, 75, 1)
+# train9.schedule_stop(PDKT, 85, 90, 0)
+# train9.schedule_stop(TYM, 100, 105, 1)
+# train9.schedule_stop(CTND, 115, 120, 1)
+# train9.schedule_stop(KKDI, 130, 135, 0)
 
-train11 = Train(env, "T11", [], max_speed=70, priority=3, length=280, weight=3700, initial_delay=0, hp=3125, accel_mps2=0.5, decel_mps2=0.5)
-train11.schedule_stop(TPJ, 30, 35, 1)
-train11.schedule_stop(KRUR, 60, 60, 0)
-train11.schedule_stop(PDKT, 95, 100, 0)
-train11.schedule_stop(CTND, 120, 120, 0)
-train11.schedule_stop(KKDI, 140, 145, 1)
+# train10 = Train(env, "T10", [], max_speed=110, priority=1, length=310, weight=4050, initial_delay=0, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
+# train10.schedule_stop(KKDI, 20, 25, 1)
+# train10.schedule_stop(CTND, 45, 50, 0)
+# train10.schedule_stop(TYM, 60, 65, 0)
+# train10.schedule_stop(PDKT, 70, 75, 0)
+# train10.schedule_stop(VEL, 80, 85, 1)
+# train10.schedule_stop(KRUR, 95, 100, 1)
+# train10.schedule_stop(KRMG, 110, 115, 1)
+# train10.schedule_stop(TPJ, 125, 130, 1)
 
-train12 = Train(env, "T12", [], max_speed=120, priority=1, length=330, weight=4200, initial_delay=0, hp=6000, accel_mps2=0.5, decel_mps2=0.5)
-train12.schedule_stop(KKDI, 50, 55, 1)
-train12.schedule_stop(CTND, 75, 80, 1)
-train12.schedule_stop(PDKT, 105, 110, 0)
-train12.schedule_stop(KRUR, 140, 145, 1)
-train12.schedule_stop(TPJ, 165, 170, 0)
+# train11 = Train(env, "T11", [], max_speed=70, priority=3, length=280, weight=3700, initial_delay=0, hp=3125, accel_mps2=0.5, decel_mps2=0.5)
+# train11.schedule_stop(TPJ, 30, 35, 1)
+# train11.schedule_stop(KRUR, 60, 60, 0)
+# train11.schedule_stop(PDKT, 95, 100, 0)
+# train11.schedule_stop(CTND, 120, 120, 0)
+# train11.schedule_stop(KKDI, 140, 145, 1)
 
-train13 = Train(env, "T13", [], max_speed=100, priority=2, length=260, weight=3500, initial_delay=0, hp=3125, accel_mps2=0.5, decel_mps2=0.5)
-train13.schedule_stop(TPJ, 70, 75, 0)
-train13.schedule_stop(KRUR, 100, 100, 0)
-train13.schedule_stop(PDKT, 130, 130, 0)
-train13.schedule_stop(CTND, 155, 160, 1)
-train13.schedule_stop(KKDI, 180, 185, 1)
+# train12 = Train(env, "T12", [], max_speed=120, priority=1, length=330, weight=4200, initial_delay=0, hp=6000, accel_mps2=0.5, decel_mps2=0.5)
+# train12.schedule_stop(KKDI, 50, 55, 1)
+# train12.schedule_stop(CTND, 75, 80, 1)
+# train12.schedule_stop(PDKT, 105, 110, 0)
+# train12.schedule_stop(KRUR, 140, 145, 1)
+# train12.schedule_stop(TPJ, 165, 170, 0)
 
-train14 = Train(env, "T14", [], max_speed=140, priority=1, length=300, weight=3950, initial_delay=0, hp=4500, accel_mps2=0.5, decel_mps2=0.5)
-train14.schedule_stop(KKDI, 85, 90, 0)
-train14.schedule_stop(CTND, 110, 110, 0)
-train14.schedule_stop(PDKT, 140, 140, 0)
-train14.schedule_stop(KRUR, 165, 165, 0)
-train14.schedule_stop(TPJ, 190, 195, 1)
+# train13 = Train(env, "T13", [], max_speed=100, priority=2, length=260, weight=3500, initial_delay=0, hp=3125, accel_mps2=0.5, decel_mps2=0.5)
+# train13.schedule_stop(TPJ, 70, 75, 0)
+# train13.schedule_stop(KRUR, 100, 100, 0)
+# train13.schedule_stop(PDKT, 130, 130, 0)
+# train13.schedule_stop(CTND, 155, 160, 1)
+# train13.schedule_stop(KKDI, 180, 185, 1)
 
-train15 = Train(env, "T15", [], max_speed=90, priority=3, length=250, weight=4900, initial_delay=0, hp=4500, accel_mps2=0.5, decel_mps2=0.5)
-train15.schedule_stop(TPJ, 105, 110, 1)
-train15.schedule_stop(KRUR, 135, 135, 0)
-train15.schedule_stop(PDKT, 160, 160, 0)
-train15.schedule_stop(CTND, 185, 185, 0)
-train15.schedule_stop(KKDI, 210, 215, 1)
+# train14 = Train(env, "T14", [], max_speed=140, priority=1, length=300, weight=3950, initial_delay=0, hp=4500, accel_mps2=0.5, decel_mps2=0.5)
+# train14.schedule_stop(KKDI, 85, 90, 0)
+# train14.schedule_stop(CTND, 110, 110, 0)
+# train14.schedule_stop(PDKT, 140, 140, 0)
+# train14.schedule_stop(KRUR, 165, 165, 0)
+# train14.schedule_stop(TPJ, 190, 195, 1)
 
-train16 = Train(env, "T16", [], max_speed=160, priority=0, length=384, weight=430, initial_delay=0, hp=9010, accel_mps2=0.15, decel_mps2=0.18)  # Another VB express
-train16.schedule_stop(KKDI, 40, 40, 0)
-train16.schedule_stop(CTND, 65, 65, 0)
-train16.schedule_stop(PDKT, 80, 80, 0)
-train16.schedule_stop(KRUR, 115, 115, 0)
-train16.schedule_stop(TPJ, 145, 145, 0)
+# train15 = Train(env, "T15", [], max_speed=90, priority=3, length=250, weight=4900, initial_delay=0, hp=4500, accel_mps2=0.5, decel_mps2=0.5)
+# train15.schedule_stop(TPJ, 105, 110, 1)
+# train15.schedule_stop(KRUR, 135, 135, 0)
+# train15.schedule_stop(PDKT, 160, 160, 0)
+# train15.schedule_stop(CTND, 185, 185, 0)
+# train15.schedule_stop(KKDI, 210, 215, 1)
+
+# train16 = Train(env, "T16", [], max_speed=160, priority=0, length=384, weight=430, initial_delay=0, hp=9010, accel_mps2=0.15, decel_mps2=0.18)  # Another VB express
+# train16.schedule_stop(KKDI, 40, 40, 0)
+# train16.schedule_stop(CTND, 65, 65, 0)
+# train16.schedule_stop(PDKT, 80, 80, 0)
+# train16.schedule_stop(KRUR, 115, 115, 0)
+# train16.schedule_stop(TPJ, 145, 145, 0)
 
 
 env.run()
@@ -268,13 +248,15 @@ def plot_timetable(trains: list[Train], stations: list[Station]):
         scheduled = [sp.arrival_time for sp in train.schedule]
         actual = [t for t, tid, ev, stn in train.log.marks if tid==train.id and ev=="ARRIVE"]
         if len(scheduled) == len(actual):
-            delay = [a-s for a,s in zip(actual, scheduled)]
+            delay = list(reversed([a-s for a,s in zip(actual, scheduled)])) if train.direction=="DOWN" else [a-s for a,s in zip(actual, scheduled)]
         else:
             delay = [None]*len(scheduled)  # incomplete runs
         matrix.append(delay)
 
     import numpy as np
     matrix = np.array(matrix, dtype=float)  # force float for NaN handling
+
+    print(matrix)
 
 
     im = ax2.imshow(matrix, cmap="coolwarm", aspect="auto", interpolation="nearest")

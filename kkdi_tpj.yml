@@ -1,0 +1,45 @@
+route:
+  - station:
+      id: KKDI
+      name: KKDI
+      tracks:
+        - track: 400
+          id: T1
+          has_platform: True
+          is_mainline: True
+        - track:
+          length: 300
+          id: T2
+          has_platform: True
+          is_mainline: False
+        - track:
+          length: 300
+          id: T3
+          has_platform: True
+          is_mainline: False
+  - station:
+      id: CTND
+      name: CTND
+      tracks:
+        - track: 400
+          id: T1
+          has_platform: True
+          is_mainline: True
+        - track:
+          length: 300
+          id: T2
+          has_platform: True
+          is_mainline: False
+        - track:
+          length: 300
+          id: T3
+          has_platform: True
+          is_mainline: False
+
+blocks:
+  - block:
+      id: KKDI_CTND
+      length: 1000
+      from_station: KKDI
+      to_station: CTND
+      is_bidirectional: True

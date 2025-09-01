@@ -59,7 +59,7 @@ def total_headway(
     return max(perf_time, sig_time) + buffer_min
 
 
-def total_runtime(length_km, line_speed, train_max_speed, train_accel, train_decel) -> int:
+def total_runtime(length_km, line_speed, train_max_speed, train_accel, train_decel, should_accelerate = True, should_decelerate = True) -> int:
     L = max(0.0, float(length_km)) * 1000.0                  # meters
     if L == 0:
         return 0
@@ -74,21 +74,24 @@ def total_runtime(length_km, line_speed, train_max_speed, train_accel, train_dec
     # --- Distances to accel to v_cap and decel from v_cap ---
     d_accel = 0.5 * v_cap * v_cap / a
     d_decel = 0.5 * v_cap * v_cap / b
-
-    if d_accel + d_decel <= L:
-        # Trapezoidal: accel → cruise → decel
-        d_cruise = L - (d_accel + d_decel)
-        t_accel  = v_cap / a
-        t_cruise = d_cruise / v_cap if v_cap > 0 else 0.0
-        t_decel  = v_cap / b
-        total_s  = t_accel + t_cruise + t_decel
-    else:
-        # Triangular: cannot reach v_cap; peak speed determined by length
-        # Solve L = v^2/(2a) + v^2/(2b) → v_peak = sqrt(2abL/(a+b))
-        v_peak = math.sqrt((2.0 * a * b * L) / (a + b))
-        t_accel = v_peak / a
-        t_decel = v_peak / b
-        total_s = t_accel + t_decel
+    
+    # if d_accel + d_decel <= L:
+    #     # Trapezoidal: accel → cruise → decel
+    #     d_cruise = L - (d_accel + d_decel)
+    #     t_accel  = v_cap / a
+    #     t_cruise = d_cruise / v_cap if v_cap > 0 else 0.0
+    #     t_decel  = v_cap / b
+    #     total_s  = t_accel + t_cruise + t_decel
+    
+    # else:
+    #     # Triangular: cannot reach v_cap; peak speed determined by length
+    #     # Solve L = v^2/(2a) + v^2/(2b) → v_peak = sqrt(2abL/(a+b))
+    #     v_peak = math.sqrt((2.0 * a * b * L) / (a + b))
+    #     t_accel = v_peak / a
+    #     t_decel = v_peak / b
+    #     total_s = t_accel + t_decel
+    
+    total_s = length_km / v_cap
 
     # Convert to minutes, ensure at least 1 minute for any positive length
     total_min = max(1, math.ceil(total_s / 60.0))

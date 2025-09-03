@@ -29,26 +29,28 @@ env = simpy.Environment()
 # 80 = 06:50
 # 85 = 06:55
 
-train2 = Train(env, "T2", [], max_speed=110, priority=2, length=564, weight=1000, initial_delay=0, hp=6120, accel_mps2=1.2, decel_mps2=0.5)
+train2 = Train(env, "T2", [], max_speed=110, priority=1, length=523, weight=1130, initial_delay=7, hp=6350, accel_mps2=0.7, decel_mps2=1.15)
 train2.schedule_stop(KKDI, 0, 10, 0)
-train2.schedule_stop(CTND, 15, 15, 0)
-train2.schedule_stop(TYM, 25, 25, 0)
+train2.schedule_stop(CTND, 16, 16, 0)
+train2.schedule_stop(TYM, 23, 23, 0)
 train2.schedule_stop(PDKT, 33, 35, 0)
-train2.schedule_stop(VEL, 45, 45, 0)
-train2.schedule_stop(KRUR, 60, 60, 0)
-train2.schedule_stop(KRMG, 75, 75, 0)
+train2.schedule_stop(VEL, 44, 44, 0)
+train2.schedule_stop(KRUR, 55, 55, 0)
+train2.schedule_stop(KRMG, 68, 68, 0)
 train2.schedule_stop(TPJ, 80, 85, 0)
 train2.set_direction("DOWN")
 
-# train3 = Train(env, "T3", [], max_speed=60, priority=1, length=280, weight=1170, initial_delay=0, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
-# train3.schedule_stop(TPJ, 20, 25, 1)
-# train3.schedule_stop(KRMG, 30, 30, 1)
-# train3.schedule_stop(KRUR, 40, 40, 0) # Run through main
-# train3.schedule_stop(VEL, 60, 60, 0)
-# train3.schedule_stop(PDKT, 85, 90, 0)
-# train3.schedule_stop(TYM, 95, 100, 0)
-# train3.schedule_stop(CTND, 100, 100, 0) # Run through main
-# train3.schedule_stop(KKDI, 125, 130, 1)
+train3 = Train(env, "T3", [], max_speed=110, priority=2, length=268, weight=1170, initial_delay=5, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
+train3.start_time(45)
+train3.schedule_stop(TPJ, 0, 5, 1)
+train3.schedule_stop(KRMG, 14, 15, 1)
+train3.schedule_stop(KRUR, 27, 28, 1) # Run through main
+train3.schedule_stop(VEL, 39, 40, 1)
+train3.schedule_stop(PDKT, 53, 55, 0)
+train3.schedule_stop(TYM, 67, 68, 1)
+train3.schedule_stop(CTND, 75, 76, 0) # Run through main
+train3.schedule_stop(KKDI, 93, 95, 1)
+train3.set_direction("UP")
 
 # train4 = Train(env, "T4", [], max_speed=120, priority=2, length=320, weight=2580, initial_delay=0, hp=4500, accel_mps2=0.5, decel_mps2=0.5)
 # train4.schedule_stop(KKDI, 40, 45, 1)

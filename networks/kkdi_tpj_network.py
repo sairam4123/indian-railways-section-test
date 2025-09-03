@@ -67,13 +67,13 @@ def create_tpj_kkdi_network(env: simpy.Environment):
     # KKDI_CTND_4 = BlockSection(env, "KKDI_CTND", KKDI, CTND, length_km=13, line_speed=110, bidirectional=False, electric=True, signal_num=4, signal_aspects=4)
 
 
-    TPJ_KRMG_3 = BlockSection(env, "TPJ_KRMG", TPJ, KRMG, length_km=13, line_speed=110, bidirectional=True, electric=True, signal_num=2, signal_aspects=4)
-    KRMG_KRUR_3 = BlockSection(env, "KRMG_KRUR", KRMG, KRUR, length_km=15, line_speed=110, bidirectional=True, electric=True, signal_num=2, signal_aspects=4)
-    KRUR_VEL_3 = BlockSection(env, "KRUR_VEL", KRUR, VEL, length_km=13, line_speed=110, bidirectional=True, electric=True, signal_num=2, signal_aspects=4)
-    VEL_PDKT_3 = BlockSection(env, "VEL_PDKT", VEL, PDKT, length_km=11, line_speed=110, bidirectional=True, electric=True, signal_num=2, signal_aspects=4)
-    PDKT_TYM_3 = BlockSection(env, "PDKT_TYM", PDKT, TYM, length_km=16, line_speed=110, bidirectional=True, electric=True, signal_num=2, signal_aspects=4)
-    TYM_CTND_3 = BlockSection(env, "TYM_CTND", TYM, CTND, length_km=10, line_speed=110, bidirectional=True, electric=True, signal_num=2, signal_aspects=4)
-    CTND_KKDI_3 = BlockSection(env, "CTND_KKDI", CTND, KKDI, length_km=11, line_speed=100, bidirectional=True, electric=True, signal_num=2, signal_aspects=4)
+    TPJ_KRMG_3 = BlockSection(env, "TPJ_KRMG", TPJ, KRMG, length_km=13, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    KRMG_KRUR_3 = BlockSection(env, "KRMG_KRUR", KRMG, KRUR, length_km=16, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    KRUR_VEL_3 = BlockSection(env, "KRUR_VEL", KRUR, VEL, length_km=12, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    VEL_PDKT_3 = BlockSection(env, "VEL_PDKT", VEL, PDKT, length_km=12, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    PDKT_TYM_3 = BlockSection(env, "PDKT_TYM", PDKT, TYM, length_km=16, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    TYM_CTND_3 = BlockSection(env, "TYM_CTND", TYM, CTND, length_km=9, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    CTND_KKDI_3 = BlockSection(env, "CTND_KKDI", CTND, KKDI, length_km=11, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
 
     return (
         # Stations

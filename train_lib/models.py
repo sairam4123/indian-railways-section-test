@@ -557,8 +557,11 @@ class Train:
             # Acquire the bidirectional resource for the block
             # req = yield block.bidir_resource.request(self, direction, priority=self.priority)
             # Run inside the block while holding the lock
+
+            self.current_block = block
+
             try:
-                random_delay = random.uniform(0, 15) # Approximate TSR, PSR, Maintenance works
+                random_delay = random.uniform(-5, probability_based_delay(self.priority))
                 run = block._run_minutes(self, should_accelerate, should_decelerate) + (random_delay if ENABLE_RANDOM_DELAYS else 0)
                 print(f"[{self.id}] Runtime: {run}")
                 yield self.env.timeout(run)
@@ -654,3 +657,18 @@ class TrainLog:
     def mark_exit_block(self, block: BlockSection):
         self.marks.append((self.train.env.now, self.train.id, EXIT, block.name))
 
+
+def probability_based_delay(priority: int) -> int:
+    """
+    Return a random delay based on train priority.
+    Higher priority trains have lower chance of delay.
+    """
+    rand_val = random.random()
+    if priority >= 3:  # Highest priority
+        return 0 if rand_val < 0.9 else random.randint(1, 15)
+    elif priority >= 2:
+        return 0 if rand_val < 0.7 else random.randint(1, 10)
+    elif priority >= 1:
+        return 0 if rand_val < 0.5 else random.randint(1, 5)
+    else:  # Lowest priority
+        return random.randint(5, 20) if rand_val < 0.8 else random.randint(1, 5)

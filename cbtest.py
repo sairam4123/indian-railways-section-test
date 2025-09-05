@@ -2,9 +2,10 @@ import math
 import random
 import simpy
 import simpy.resources.resource
+from simpy.core import EmptySchedule, Infinity as SimpyInfinity
 
 from networks.kkdi_tpj_network import create_tpj_kkdi_network
-from train_lib.models import Train, Station, Track, BlockSection
+from train_lib.models import DecisionSuggestion, Train, Station, Track, BlockSection
 from train_lib.constants import ARRIVAL, DEPARTURE
 
 env = simpy.Environment()
@@ -29,7 +30,8 @@ env = simpy.Environment()
 # 80 = 06:50
 # 85 = 06:55
 
-train2 = Train(env, "T2", [], max_speed=110, priority=1, length=523, weight=1130, initial_delay=7, hp=6350, accel_mps2=0.7, decel_mps2=1.15)
+train2 = Train(env, "T2", [], max_speed=110, priority=1, length=523, weight=1130, initial_delay=7, hp=6350, accel_mps2=0.9, decel_mps2=0.85)
+train2.start_time(0)
 train2.schedule_stop(KKDI, 0, 10, 0)
 train2.schedule_stop(CTND, 16, 16, 0)
 train2.schedule_stop(TYM, 23, 23, 0)
@@ -40,17 +42,17 @@ train2.schedule_stop(KRMG, 68, 68, 0)
 train2.schedule_stop(TPJ, 80, 85, 0)
 train2.set_direction("DOWN")
 
-train3 = Train(env, "T3", [], max_speed=110, priority=2, length=268, weight=1170, initial_delay=5, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
-train3.start_time(45)
-train3.schedule_stop(TPJ, 0, 5, 1)
-train3.schedule_stop(KRMG, 14, 15, 1)
-train3.schedule_stop(KRUR, 27, 28, 1) # Run through main
-train3.schedule_stop(VEL, 39, 40, 1)
-train3.schedule_stop(PDKT, 53, 55, 0)
-train3.schedule_stop(TYM, 67, 68, 1)
-train3.schedule_stop(CTND, 75, 76, 0) # Run through main
-train3.schedule_stop(KKDI, 93, 95, 1)
-train3.set_direction("UP")
+# train3 = Train(env, "T3", [], max_speed=110, priority=2, length=268, weight=1170, initial_delay=5, hp=6120, accel_mps2=0.5, decel_mps2=0.5)
+# train3.start_time(45)
+# train3.schedule_stop(TPJ, 0, 5, 1)
+# train3.schedule_stop(KRMG, 14, 15, 1)
+# train3.schedule_stop(KRUR, 27, 28, 1) # Run through main
+# train3.schedule_stop(VEL, 39, 40, 1)
+# train3.schedule_stop(PDKT, 53, 55, 0)
+# train3.schedule_stop(TYM, 67, 68, 1)
+# train3.schedule_stop(CTND, 75, 76, 0) # Run through main
+# train3.schedule_stop(KKDI, 93, 95, 1)
+# train3.set_direction("UP")
 
 # train4 = Train(env, "T4", [], max_speed=120, priority=2, length=320, weight=2580, initial_delay=0, hp=4500, accel_mps2=0.5, decel_mps2=0.5)
 # train4.schedule_stop(KKDI, 40, 45, 1)
@@ -61,8 +63,10 @@ train3.set_direction("UP")
 # train4.schedule_stop(KRUR, 130, 135, 1)
 # train4.schedule_stop(KRMG, 140, 140, 0)
 # train4.schedule_stop(TPJ, 150, 155, 0)
+# train4.set_direction("UP")
 
 # train5 = Train(env, "T5", [], max_speed=90, priority=3, length=250, weight=1277, initial_delay=0, hp=4500, accel_mps2=0.3, decel_mps2=0.2)
+# train5.start_time(10)
 # train5.schedule_stop(TPJ, 60, 65, 2)
 # train5.schedule_stop(KRMG, 80, 80, 0)
 # train5.schedule_stop(KRUR, 90, 90, 0)
@@ -71,8 +75,10 @@ train3.set_direction("UP")
 # train5.schedule_stop(TYM, 210, 210, 0)
 # train5.schedule_stop(CTND, 220, 220, 0)
 # train5.schedule_stop(KKDI, 270, 280, 1)
+# train5.set_direction("DOWN")
 
 # train6 = Train(env, "T6", [], max_speed=160, priority=1, length=300, weight=4000, initial_delay=0, hp=12000, accel_mps2=0.5, decel_mps2=0.5)
+# train6.start_time(20)
 # train6.schedule_stop(KKDI, 75, 80, 0)
 # train6.schedule_stop(CTND, 100, 100, 0) # Run through main
 # train6.schedule_stop(TYM, 120, 120, 0)
@@ -81,8 +87,10 @@ train3.set_direction("UP")
 # train6.schedule_stop(KRUR, 160, 160, 0)
 # train6.schedule_stop(KRMG, 170, 170, 0)
 # train6.schedule_stop(TPJ, 185, 190, 1)
+# train6.set_direction("UP")
 
 # train7 = Train(env, "T7", [], max_speed=100, priority=2, length=270, weight=3600, initial_delay=0, hp=3125, accel_mps2=0.5, decel_mps2=0.5)
+# train7.start_time(50)
 # train7.schedule_stop(TPJ, 95, 100, 1)
 # train7.schedule_stop(KRMG, 110, 115, 0)
 # train7.schedule_stop(KRUR, 120, 125, 1)
@@ -91,6 +99,7 @@ train3.set_direction("UP")
 # train7.schedule_stop(TYM, 170, 175, 0)
 # train7.schedule_stop(CTND, 180, 185, 1)
 # train7.schedule_stop(KKDI, 200, 205, 1)
+# train7.set_direction("DOWN")
 
 # train8 = Train(env, "T8", [], max_speed=160, priority=0, length=384, weight=430, initial_delay=0, hp=9010, accel_mps2=0.7, decel_mps2=0.7) # Non stop vande bharat express
 # train8.schedule_stop(KKDI, 10, 10, 0)
@@ -166,8 +175,22 @@ train3.set_direction("UP")
 # train16.schedule_stop(KRUR, 115, 115, 0)
 # train16.schedule_stop(TPJ, 145, 145, 0)
 
-
-env.run()
+time_elapsed = 0
+while True:
+    DecisionSuggestion.SUGGESTIONS.clear()
+    time_elapsed += 5
+    env.run(until=time_elapsed)  # Run for 300 minutes
+    # Process decision suggestions
+    for sugg in DecisionSuggestion.SUGGESTIONS:
+        print(f"Suggestion: {sugg.train_id} at {sugg.station_code} - {sugg.action} for {sugg.hold_time} mins ({sugg.reason})")
+        approve = input("Approve? (y/n): ")
+        if approve.lower() == "y":
+            sugg.approve()
+        else:
+            sugg.reject("User rejected the suggestion.")
+    if env.peek() == SimpyInfinity:
+        print("Empty?!")
+        break
 
 trains = Train.TRAINS
 train_logs = sum([train.log.entries for train in trains], [])
@@ -248,7 +271,7 @@ def plot_timetable(trains: list[Train], stations: list[Station]):
 
     for train in trains:
         scheduled = [sp.arrival_time for sp in train.schedule]
-        actual = [t for t, tid, ev, stn in train.log.marks if tid==train.id and ev=="ARRIVE"]
+        actual = [sp.actual_arrival_time for sp in train.schedule]
         if len(scheduled) == len(actual):
             delay = list(reversed([a-s for a,s in zip(actual, scheduled)])) if train.direction=="DOWN" else [a-s for a,s in zip(actual, scheduled)]
         else:

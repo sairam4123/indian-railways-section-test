@@ -77,7 +77,7 @@ def total_runtime(length_km: float,
 
     # Case D: neither accel nor decel -> constant speed
     else:
-        print("Is this what we are doing?")
+        print("Constant speed (SKIP AT MPS)")
         total_s = L / v_cap
 
     # convert to minutes

@@ -16,6 +16,7 @@ def pass_conflict_hold(train: 'Train', prev_block_section: 'BlockSection', curre
     
     succeeding_train_csp = next((sp for sp in succeeding_train.schedule if sp.station == current_sp.station), None)
     succeeding_train_psp = next((sp for sp in succeeding_train.schedule if sp.station == prev_station), None)
+    succeeding_train_nsp = next((sp for sp in succeeding_train.schedule if sp.station != current_sp.station and sp.arrival_time > current_sp.arrival_time), None)
 
     if not succeeding_train_csp:
         print("[CRITICAL] THIS SHOULD NOT HAPPEN.. ")
@@ -24,6 +25,9 @@ def pass_conflict_hold(train: 'Train', prev_block_section: 'BlockSection', curre
     if not succeeding_train_psp:
         print("[CRITICAL] THIS SHOULD NOT HAPPEN.. ")
         raise Exception(f"Succeeding train does not have previous station {prev_station.stn_code} in its schedule")
+    
+    if not succeeding_train_nsp:
+        return 0.0 # no next station, succeeding train terminates here
 
     succeeding_train_pred_arrival = succeeding_train_psp.actual_departure_time + prev_block_section._run_minutes(succeeding_train, succeeding_train.should_accelerate(succeeding_train_csp, succeeding_train_csp.dwell_time), succeeding_train.should_decelerate(succeeding_train_csp))
 
@@ -40,16 +44,16 @@ def pass_conflict_hold(train: 'Train', prev_block_section: 'BlockSection', curre
         return 0.0 # no next station, train terminates here
     
     next_station = current_train_nsp.station
-    next_block_section = next_station.get_block_to(next_station)
+    next_block_section = current_sp.station.get_block_to(next_station)
     if not next_block_section:
         print("[WARN] No next block section found. Returning 0.0")
         return 0.0 # no next block section, train terminates here
 
     # if current train is departing earlier than succeeding train's predicted arrival
-    if current_sp.departure_time <= succeeding_train_pred_arrival:
-        if train.priority < succeeding_train.priority:
-            # current train has lower priority than succeeding train, must wait
-            wait_time = (succeeding_train_pred_arrival - current_sp.departure_time) + next_block_section._headway_mins(train, True) # since we are stopping at this station
+    if current_sp.departure_time <= succeeding_train_pred_arrival and succeeding_train_csp.layover_time <= 0:
+        if train.priority > succeeding_train.priority:
+            # current train has lower priority (min heap) than succeeding train, must wait
+            wait_time = (succeeding_train_pred_arrival - current_sp.departure_time) + next_block_section._headway_mins(train, True) + next_block_section._run_minutes(succeeding_train, succeeding_train_csp.dwell_time > 0, succeeding_train.should_decelerate(succeeding_train_nsp)) # since we are stopping at this station
             return wait_time
 
     if current_sp.departure_time > succeeding_train_pred_arrival:
@@ -65,15 +69,21 @@ def meet_conflict_hold(train: 'Train', oncoming_block_section: 'BlockSection', c
     oncoming_train, _ = oncoming_block_section.occupied_train
     # search for current station in the oncoming train schedule
 
-    oncoming_train_csp = next((sp for sp in oncoming_train.schedule if sp.station == current_sp.station), None)
+    oncoming_train_csp = oncoming_train.sp_for_station(current_sp.station)
+    oncoming_train_nsp = oncoming_train.next_schedule_point(oncoming_train_csp) if oncoming_train_csp else None
 
     if not oncoming_train_csp:
         print("[CRITICAL] THIS SHOULD NOT HAPPEN.. ")
         raise Exception(f"Oncoming train does not have current station {current_sp.station.stn_code} in its schedule")
+    
+    if not oncoming_train_nsp:
+        print("[CRITICAL] THIS SHOULD NOT HAPPEN.. ")
+        raise Exception(f"Oncoming train does not have next station after {current_sp.station.stn_code} in its schedule")
 
-    oncoming_train_pred_arrival = oncoming_train_csp.actual_departure_time + oncoming_block_section._run_minutes(oncoming_train, oncoming_train.should_accelerate(oncoming_train_csp, oncoming_train_csp.dwell_time), oncoming_train.should_decelerate(oncoming_train_csp))
+    oncoming_train_pred_arrival = oncoming_train_csp.actual_departure_time + oncoming_block_section._run_minutes(oncoming_train, oncoming_train.should_accelerate(oncoming_train_csp, oncoming_train_csp.dwell_time), oncoming_train.should_decelerate(oncoming_train_nsp))
 
-    current_train_nsp = next((sp for sp in train.schedule if sp.station != current_sp.station and sp.arrival_time > current_sp.arrival_time), None)
+    current_train_csp = train.sp_for_station(current_sp.station)
+    current_train_nsp = train.next_schedule_point(current_train_csp) if current_train_csp else None
 
 
     if not current_train_nsp:
@@ -88,17 +98,15 @@ def meet_conflict_hold(train: 'Train', oncoming_block_section: 'BlockSection', c
 
     # if current train is departing earlier than oncoming train's predicted arrival
     if current_sp.departure_time <= oncoming_train_pred_arrival:
-        if train.priority < oncoming_train.priority:
-            # current train has lower priority than oncoming train, must wait
-            wait_time = (oncoming_train_pred_arrival - current_sp.departure_time) + next_block_section._headway_mins(train, True) # since we are stopping at this station
-            return wait_time
+        wait_time = (oncoming_train_pred_arrival - current_sp.departure_time) + next_block_section._headway_mins(train, True) # since we are stopping at this station
+        return wait_time
 
     if current_sp.departure_time > oncoming_train_pred_arrival:
         return 0.0 # We do not have to do anything here.
 
     return 0.0
 
-def capacity_conflict_hold(train: 'Train', current_sp: 'SchedulePoint'):
+def capacity_conflict_hold(train: 'Train', current_sp: 'SchedulePoint') -> float:
 
     next_scheduled_halt_sp = next((sp for sp in train.schedule if sp.station != current_sp.station and sp.arrival_time > current_sp.actual_arrival_time and sp.layover_time > 0), None)
 
@@ -158,6 +166,7 @@ def capacity_conflict_hold(train: 'Train', current_sp: 'SchedulePoint'):
 
             # if not same block, no problem
             return 0.0
+    return 0.0
 
 
     # No available platform track, we need to wait

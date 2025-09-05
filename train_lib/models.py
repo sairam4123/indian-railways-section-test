@@ -10,6 +10,7 @@ from .constants import *
 import simpy
 import heapq
 from collections import deque, namedtuple
+from train_lib.heuristics import capacity_conflict_hold, meet_conflict_hold, pass_conflict_hold
 
 # Simple token object returned to the requester
 class BidirToken:
@@ -164,6 +165,26 @@ class BidirectionalResource:
             continue
 
 
+class DecisionSuggestion:
+
+    SUGGESTIONS: list['DecisionSuggestion'] = []
+
+    def __init__(self, env: simpy.Environment, train_id: str, station_code: str, action: str, hold_time: float, reason: str) -> None:
+        self.train_id = train_id
+        self.station_code = station_code
+        self.action = action
+        self.hold_time = hold_time
+        self.reason = reason
+        self.event = simpy.Event(env)
+
+    def approve(self):
+        self.event.succeed("ACCEPT")
+
+    def reject(self, reason: str):
+        self.event.succeed("REJECT")
+
+    def wait(self):
+        return self.event
 
 class Station:
     STATIONS = []
@@ -327,7 +348,7 @@ class BlockSection:
         - train.max_speed in km/h
         - train.accel_mps2, train.decel_mps2 in m/s^2
         """
-        total_min = total_headway(train.max_speed, self.line_speed, train.length_m * 1000, train.accel_mps2, train.decel_mps2, self.signal_aspects, buffer_min=1.0, block_km=self.length_km, should_accelerate=should_accelerate)
+        total_min = total_headway(train.max_speed, self.line_speed, train.length_m, train.accel_mps2, train.decel_mps2, self.signal_aspects, buffer_min=1.0, block_km=self.length_km, should_accelerate=should_accelerate)
         return total_min
     
     def direction_from(self, from_station, to_station):
@@ -410,6 +431,27 @@ class Train:
         if next_sp.layover_time > 0:
             return True
         return False
+    
+    def prev_schedule_point(self, sp: 'SchedulePoint') -> 'SchedulePoint | None':
+        if sp:
+            idx = self.schedule.index(sp)
+            if idx > 0:
+                return self.schedule[idx - 1]
+        if self.schedule_pointer == 0:
+            return None
+        return self.schedule[self.schedule_pointer - 1]
+    
+    def next_schedule_point(self, sp: 'SchedulePoint') -> 'SchedulePoint | None':
+        if sp:
+            idx = self.schedule.index(sp)
+            if idx + 1 < len(self.schedule):
+                return self.schedule[idx + 1]
+        if self.schedule_pointer + 1 >= len(self.schedule):
+            return None
+        return self.schedule[self.schedule_pointer + 1]
+
+    def sp_for_station(self, station: 'Station') -> 'SchedulePoint | None':
+        return next((sp for sp in self.schedule if sp.station == station), None)
 
     def run(self):
         current_sp = self.schedule[self.schedule_pointer]
@@ -418,6 +460,8 @@ class Train:
             yield self.env.timeout(map_enter_delay)
 
         while self.schedule_pointer < len(self.schedule):
+            # prev_sp = self.schedule[self.schedule_pointer - 1] if self.schedule_pointer > 0 else None
+            prev_sp = current_sp
             current_sp = self.schedule[self.schedule_pointer]
 
             # print(f"{self.env.now}: Approaching {current_sp.station.stn_code} - {self.id}")
@@ -461,12 +505,6 @@ class Train:
             # We'll do it like this: pre-acquire by calling traverse(), but we need to dispatch just before moving.
             # So we split traverse() into acquire+run+release by using a small helper:
 
-            # Acquire the block, but don't start timing until we leave platform:
-            # We can emulate this by first acquiring, then dispatch, then run+headway while holding.
-            req = block.resource.request(priority=self.priority)
-            yield req
-            block.occupied_train = (self, req)  # mark for live view
-
             should_accelerate = self.should_accelerate(next_sp, dwell_time)
             should_decelerate = self.should_decelerate(next_sp)
 
@@ -475,6 +513,36 @@ class Train:
             # Leave the platform now (starter clears)
             # print(f"{self.env.now}: Departing {current_sp.station.stn_code} - {self.id} - {block.name}")
             self.log.log(f"Departing {current_sp.station.stn_code} towards {next_sp.station.stn_code} via {block.name}")
+            
+            next_block = current_sp.station.get_block_to(next_sp.station)
+            prev_block = prev_sp.station.get_block_to(current_sp.station) if prev_sp else None
+
+            capacity_hold = capacity_conflict_hold(self, current_sp)
+            meet_hold = meet_conflict_hold(self, next_block, current_sp) if next_block else 0
+            pass_hold = pass_conflict_hold(self, prev_block, current_sp) if prev_block else 0
+
+            print("Capacity Hold:", capacity_hold, "Meet Hold:", meet_hold, "Pass Hold:", pass_hold)
+
+            hold_time = max(capacity_hold, meet_hold, pass_hold)
+
+            # hold_time = max(0, capacity_conflict_hold(self, current_sp), meet_conflict_hold(self, next_block, current_sp) if next_block else 0, pass_conflict_hold(self, prev_block, current_sp) if prev_block else 0) / 60.0
+            print("Calculated Hold Time:", hold_time)
+            if hold_time > 0:
+                sugg = DecisionSuggestion(self.env, self.id, current_sp.station.stn_code, "HOLD", hold_time, "Conflict detected")
+                DecisionSuggestion.SUGGESTIONS.append(sugg)
+                action = yield sugg.wait()
+                if action == "ACCEPT":
+                    self.log.log(f"Hold time accepted for {self.id} at {current_sp.station.stn_code}: {hold_time} mins")
+                    yield self.env.timeout(hold_time)
+                else:
+                    self.log.log(f"Hold time rejected for {self.id} at {current_sp.station.stn_code}")
+
+            # Acquire the block, but don't start timing until we leave platform:
+            # We can emulate this by first acquiring, then dispatch, then run+headway while holding.
+            req = block.resource.request(priority=self.priority)
+            yield req
+            block.occupied_train = (self, req)  # mark for live view
+
             yield from current_sp.station.dispatch(self, current_sp)
             self.log.mark_departure(current_sp.station)
             current_sp.mark_departure()

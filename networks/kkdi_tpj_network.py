@@ -35,7 +35,6 @@ def create_tpj_kkdi_network(env: simpy.Environment):
     TYM_loop2 = Track(env, "TYM_loop2", has_platform=True, length=400)
     TYM = Station(env, 'tym', [TYM_main, TYM_loop1, TYM_loop2])
 
-
     CTND_main = Track(env, "CTND_main", has_platform=False, length=600)
     CTND_loop1 = Track(env, "CTND_loop1", has_platform=True, length=400)
     CTND_loop2 = Track(env, "CTND_loop2", has_platform=True, length=400)
@@ -50,30 +49,30 @@ def create_tpj_kkdi_network(env: simpy.Environment):
     KKDI = Station(env, 'kkdi', [KKDI_main, KKDI_loop1, KKDI_loop2, KKDI_loop3, KKDI_loop4])
 
 
-    # TPJ_KRUR = BlockSection(env, "TPJ_KRUR", TPJ, KRUR, length_km=27, line_speed=100, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-    # KRUR_PDKT = BlockSection(env, "KRUR_PDKT", KRUR, PDKT, length_km=32, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-    # PDKT_CTND = BlockSection(env, "PDKT_CTND", PDKT, CTND, length_km=26, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-    # CTND_KKDI = BlockSection(env, "CTND_KKDI", CTND, KKDI, length_km=13, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    TPJ_KRMG_BD = BlockSection(env, "TPJ_KRMG", TPJ, KRMG, length_km=13, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    KRMG_KRUR_BD = BlockSection(env, "KRMG_KRUR", KRMG, KRUR, length_km=16, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    KRUR_VEL_BD = BlockSection(env, "KRUR_VEL", KRUR, VEL, length_km=12, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    VEL_PDKT_BD = BlockSection(env, "VEL_PDKT", VEL, PDKT, length_km=12, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    PDKT_TYM_BD = BlockSection(env, "PDKT_TYM", PDKT, TYM, length_km=16, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    TYM_CTND_BD = BlockSection(env, "TYM_CTND", TYM, CTND, length_km=9, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
+    CTND_KKDI_BD = BlockSection(env, "CTND_KKDI", CTND, KKDI, length_km=11, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
 
+    # TPJ_KRMG_3 = BlockSection(env, "TPJ_KRMG", TPJ, KRMG, length_km=13, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # KRMG_KRUR_3 = BlockSection(env, "KRMG_KRUR", KRMG, KRUR, length_km=16, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # KRUR_VEL_3 = BlockSection(env, "KRUR_VEL", KRUR, VEL, length_km=12, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # VEL_PDKT_3 = BlockSection(env, "VEL_PDKT", VEL, PDKT, length_km=12, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # PDKT_TYM_3 = BlockSection(env, "PDKT_TYM", PDKT, TYM, length_km=16, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # TYM_CTND_3 = BlockSection(env, "TYM_CTND", TYM, CTND, length_km=9, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # CTND_KKDI_3 = BlockSection(env, "CTND_KKDI", CTND, KKDI, length_km=11, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
 
-    # KRUR_TPJ = BlockSection(env, "KRUR_TPJ", KRUR, TPJ, length_km=27, line_speed=100, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-    # PDKT_KRUR = BlockSection(env, "PDKT_KRUR", PDKT, KRUR, length_km=32, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-    # CTND_PDKT = BlockSection(env, "CTND_PDKT", CTND, PDKT, length_km=26, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
-    # KKDI_CTND = BlockSection(env, "KKDI_CTND", KKDI, CTND, length_km=13, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # KRMG_TPJ_4 = BlockSection(env, "KRMG_TPJ", KRMG, TPJ, length_km=13, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # KRUR_KRMG_4 = BlockSection(env, "KRUR_KRMG", KRUR, KRMG, length_km=16, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # VEL_KRUR_4 = BlockSection(env, "VEL_KRUR", VEL, KRUR, length_km=12, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # PDKT_VEL_4 = BlockSection(env, "PDKT_VEL", PDKT, VEL, length_km=12, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # TYM_PDKT_4 = BlockSection(env, "TYM_PDKT", TYM, PDKT, length_km=16, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # CTND_TYM_4 = BlockSection(env, "CTND_TYM", CTND, TYM, length_km=9, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
+    # KKDI_CTND_4 = BlockSection(env, "KKDI_CTND", KKDI, CTND, length_km=11, line_speed=110, bidirectional=False, electric=True, signal_num=3, signal_aspects=4)
 
-    # KRUR_TPJ_4 = BlockSection(env, "KRUR_TPJ", KRUR, TPJ, length_km=27, line_speed=100, bidirectional=False, electric=True, signal_num=4, signal_aspects=4)
-    # PDKT_KRUR_4 = BlockSection(env, "PDKT_KRUR", PDKT, KRUR, length_km=32, line_speed=110, bidirectional=False, electric=True, signal_num=4, signal_aspects=4)
-    # CTND_PDKT_4 = BlockSection(env, "CTND_PDKT", CTND, PDKT, length_km=26, line_speed=110, bidirectional=False, electric=True, signal_num=4, signal_aspects=4)
-    # KKDI_CTND_4 = BlockSection(env, "KKDI_CTND", KKDI, CTND, length_km=13, line_speed=110, bidirectional=False, electric=True, signal_num=4, signal_aspects=4)
-
-
-    TPJ_KRMG_3 = BlockSection(env, "TPJ_KRMG", TPJ, KRMG, length_km=13, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
-    KRMG_KRUR_3 = BlockSection(env, "KRMG_KRUR", KRMG, KRUR, length_km=16, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
-    KRUR_VEL_3 = BlockSection(env, "KRUR_VEL", KRUR, VEL, length_km=12, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
-    VEL_PDKT_3 = BlockSection(env, "VEL_PDKT", VEL, PDKT, length_km=12, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
-    PDKT_TYM_3 = BlockSection(env, "PDKT_TYM", PDKT, TYM, length_km=16, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
-    TYM_CTND_3 = BlockSection(env, "TYM_CTND", TYM, CTND, length_km=9, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
-    CTND_KKDI_3 = BlockSection(env, "CTND_KKDI", CTND, KKDI, length_km=11, line_speed=110, bidirectional=True, electric=True, signal_num=3, signal_aspects=4)
 
     return (
         # Stations
@@ -84,7 +83,9 @@ def create_tpj_kkdi_network(env: simpy.Environment):
             # [TPJ_KRUR, KRUR_PDKT, PDKT_CTND, CTND_KKDI],
             # [KRUR_TPJ, PDKT_KRUR, CTND_PDKT, KKDI_CTND],
             # [KRUR_TPJ_4, PDKT_KRUR_4, CTND_PDKT_4, KKDI_CTND_4],
-            [TPJ_KRMG_3, KRMG_KRUR_3, KRUR_VEL_3, VEL_PDKT_3, PDKT_TYM_3, TYM_CTND_3, CTND_KKDI_3],
+            # [TPJ_KRMG_3, KRMG_KRUR_3, KRUR_VEL_3, VEL_PDKT_3, PDKT_TYM_3, TYM_CTND_3, CTND_KKDI_3],
+            # [KRMG_TPJ_4, KRUR_KRMG_4, VEL_KRUR_4, PDKT_VEL_4, TYM_PDKT_4, CTND_TYM_4, KKDI_CTND_4],
+            [TPJ_KRMG_BD, KRMG_KRUR_BD, KRUR_VEL_BD, VEL_PDKT_BD, PDKT_TYM_BD, TYM_CTND_BD, CTND_KKDI_BD],
         ],
 
 

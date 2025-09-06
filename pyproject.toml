@@ -7,5 +7,6 @@ requires-python = ">=3.13"
 dependencies = [
     "matplotlib>=3.10.5",
     "ortools>=9.14.6206",
+    "scikit-learn>=1.7.1",
     "simpy>=4.1.1",
 ]

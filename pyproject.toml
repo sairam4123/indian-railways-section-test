@@ -5,8 +5,16 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "aioconsole>=0.8.2",
+    "aiohttp>=3.13.3",
+    "beautifulsoup4>=4.14.3",
+    "climage>=0.2.2",
+    "fastapi[all]>=0.116.1",
     "matplotlib>=3.10.5",
     "ortools>=9.14.6206",
+    "parsedatetime>=2.6",
+    "requests>=2.32.5",
     "scikit-learn>=1.7.1",
     "simpy>=4.1.1",
+    "sqlmodel>=0.0.24",
 ]

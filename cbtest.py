@@ -20,14 +20,16 @@ network = create_alu_tpj_network(sim)
 # [TPJ, KRMG, KRUR, VEL, PDKT, TYM, CTND, KKDI] = network.get_stations()
 [TPJ, GOC, SRGM, LLI, PMB, KKPM, SLTH, ALU] = network.get_stations()
 
-scheduling_horizon = 60  # minutes
+scheduling_horizon = 120  # minutes
 current_time = int(datetime.datetime.now().timestamp())
 
 
 etrain = ETrainAPISync()
 
 # 1. Fetch live trains from all boundary stations
-boundary_stations = [stn for stn in network.stations if getattr(stn, "is_boundary", False)]
+boundary_stations = [
+    stn for stn in network.stations if getattr(stn, "is_boundary", False)
+]
 print(f"Boundary Stations: {[stn.stn_code for stn in boundary_stations]}")
 
 live_trains_map = {}
@@ -45,21 +47,21 @@ for stn in boundary_stations:
         stn_names = {
             "TPJ": "TIRUCHCHIRAPALI",
             "ALU": "ARIYALUR",
-            "KKDI": "KARAIKKUDI JN", 
+            "KKDI": "KARAIKKUDI JN",
             # Add others if they become boundaries later
         }
         stn_name = stn_names.get(stn.stn_code.upper(), stn.stn_code.upper())
-        
+
         l_trains = etrain.get_live_station(stn.stn_code.upper(), stn_name)
         for t in l_trains:
             # key by train_no
-            if t['train_no'] not in live_trains_map:
-                live_trains_map[t['train_no']] = t
-                # Verify we keep the train object that has the most relevant info? 
-                # The 'exp_arr' depends on the station we fetched it from. 
+            if t["train_no"] not in live_trains_map:
+                live_trains_map[t["train_no"]] = t
+                # Verify we keep the train object that has the most relevant info?
+                # The 'exp_arr' depends on the station we fetched it from.
                 # We need this to calculate the date.
                 # We should probably store which station we fetched it from to use for date calc.
-                t['_fetched_from'] = stn.stn_code.upper() 
+                t["_fetched_from"] = stn.stn_code.upper()
     except Exception as e:
         print(f"Error fetching {stn.stn_code}: {e}")
 
@@ -67,7 +69,6 @@ print(f"Found {len(live_trains_map)} unique trains.")
 
 
 for train_no, train in live_trains_map.items():
-
     print(
         f"{train['train_no']} {train['train_name']} - Fetched from {train['_fetched_from']}"
     )
@@ -120,8 +121,8 @@ for train_no, train in live_trains_map.items():
 
     # Calculate the start date of the train
     # We use the station we fetched the data from (train['_fetched_from']) as the reference point
-    current_station_code = train['_fetched_from']
-    
+    current_station_code = train["_fetched_from"]
+
     # Helper to parse "HH:MM"
     def get_time_obj(time_str):
         try:
@@ -130,65 +131,84 @@ for train_no, train in live_trains_map.items():
             return None
 
     # 1. Get Live Event Time
-    event_time_str = train['exp_arr']
+    event_time_str = train["exp_arr"]
     print(f"DEBUG: Event time string for {train['train_no']}: {event_time_str}")
     if event_time_str == "Source":
-        event_time_str = train['exp_dept']
-    
+        event_time_str = train["exp_dept"]
+
     if event_time_str in ["N/A", None]:
-         # Fallback if no time info
-         train_scheduled_date = datetime.datetime.now().date()
-         print(f"[WARNING] No live time info for {train['train_no']}. Assuming today.")
+        # Fallback if no time info
+        train_scheduled_date = datetime.datetime.now().date()
+        print(f"[WARNING] No live time info for {train['train_no']}. Assuming today.")
     else:
         # 2. Determine Event Date at Current Station
         now = datetime.datetime.now()
         event_time = get_time_obj(event_time_str)
-        
+
         if event_time:
             event_date = now.date()
             event_dt = datetime.datetime.combine(event_date, event_time)
-            
+
             # Adjust for midnight crossover (heuristic: if diff > 12h, likely separate days)
             diff = (event_dt - now).total_seconds()
-            if diff > 12 * 3600: 
+            if diff > 12 * 3600:
                 # e.g., Now=10:00, Event=23:00 (of yesterday, mostly) -> actually if Now is 01:00 and Event is 23:00, Diff is +22h
                 # If Event is 23:00 and Now is 01:00 (next day), we want Event to be yesterday.
                 # Wait: Event (01/01 23:00) vs Now (01/01 01:00) -> Diff +22h?
-                # No: EventDt (Today 23:00) - Now (Today 01:00) = +22h. 
+                # No: EventDt (Today 23:00) - Now (Today 01:00) = +22h.
                 # Real: Event was yesterday 23:00. So we subtract 1 day.
                 event_dt -= datetime.timedelta(days=1)
             elif diff < -12 * 3600:
                 # e.g., Now=23:00, Event=01:00 (Today 01:00). Diff = -22h.
                 # Real: Event is tomorrow 01:00. So we add 1 day.
                 event_dt += datetime.timedelta(days=1)
-            
+
             # 3. Find Day Offset from Schedule
-            current_stn_schedule = next((s for s in schedule if s['code'].lower() == current_station_code.lower()), None)
-            
+            current_stn_schedule = next(
+                (
+                    s
+                    for s in schedule
+                    if s["code"].lower() == current_station_code.lower()
+                ),
+                None,
+            )
+
             if current_stn_schedule:
                 # 'a_day' / 'd_day' example: "1", "2"
                 # Use 'a_day' if arriving, 'd_day' if departing/starting
-                day_val = current_stn_schedule.get('a_day') if current_station_code != schedule[0]['code'] else current_stn_schedule.get('d_day')
+                day_val = (
+                    current_stn_schedule.get("a_day")
+                    if current_station_code != schedule[0]["code"]
+                    else current_stn_schedule.get("d_day")
+                )
                 if not day_val:
                     day_val = "1"
-                
+
                 day_offset = int(day_val)
-                
+
                 # 4. Calculate Origin Date
                 # Start Date = Event Date - (Day Offset - 1)
-                train_scheduled_date = event_dt.date() - datetime.timedelta(days=(day_offset - 1))
-                print(f"DEBUG: Calculated Start Date for {train['train_no']}: {train_scheduled_date} (Event: {event_dt}, Day Offset: {day_offset})")
+                train_scheduled_date = event_dt.date() - datetime.timedelta(
+                    days=(day_offset - 1)
+                )
+                print(
+                    f"DEBUG: Calculated Start Date for {train['train_no']}: {train_scheduled_date} (Event: {event_dt}, Day Offset: {day_offset})"
+                )
             else:
-                 train_scheduled_date = now.date()
-                 print(f"DEBUG: Could not find current station in schedule for {train['train_no']}. Defaulting to today: {train_scheduled_date}")
+                train_scheduled_date = now.date()
+                print(
+                    f"DEBUG: Could not find current station in schedule for {train['train_no']}. Defaulting to today: {train_scheduled_date}"
+                )
         else:
-             train_scheduled_date = now.date()
-             print(f"DEBUG: Could not parse event time for {train['train_no']}. Defaulting to today: {train_scheduled_date}")
+            train_scheduled_date = now.date()
+            print(
+                f"DEBUG: Could not parse event time for {train['train_no']}. Defaulting to today: {train_scheduled_date}"
+            )
     # 4. Fetch running status ONCE (already done sort of, but let's be sure to have it)
     running_status = etrain.get_running_status(
         train["train_no"],
         train["train_name"],
-        train_scheduled_date, # Train's original departure date, calculate it from schedule if needed for accuracy
+        train_scheduled_date,  # Train's original departure date, calculate it from schedule if needed for accuracy
         schedule[0]["code"],  # Train's source station code
     )
 
@@ -270,33 +290,45 @@ for train_no, train in live_trains_map.items():
             # Fallback to schedule times if running status missing
             if arr_time is None and schedule_entry.get("a"):
                 try:
-                    sch_time_str = schedule_entry["a"] # "HH:MM"
+                    sch_time_str = schedule_entry["a"]  # "HH:MM"
                     sch_day_str = schedule_entry.get("a_day", "1")
                     sch_time = datetime.datetime.strptime(sch_time_str, "%H:%M").time()
                     sch_day_offset = int(sch_day_str)
-                    
+
                     # Calculate datetime
-                    sch_date = train_scheduled_date + datetime.timedelta(days=(sch_day_offset - 1))
+                    sch_date = train_scheduled_date + datetime.timedelta(
+                        days=(sch_day_offset - 1)
+                    )
                     sch_dt = datetime.datetime.combine(sch_date, sch_time)
                     arr_time = int(sch_dt.timestamp())
-                    print(f"DEBUG: Using schedule fallback for Arr at {stn_obj.stn_code}: {sch_dt}")
+                    print(
+                        f"DEBUG: Using schedule fallback for Arr at {stn_obj.stn_code}: {sch_dt}"
+                    )
                 except Exception as e:
-                    print(f"DEBUG: Schedule fallback failed for Arr at {stn_obj.stn_code}: {e}")
+                    print(
+                        f"DEBUG: Schedule fallback failed for Arr at {stn_obj.stn_code}: {e}"
+                    )
 
             if dept_time is None and schedule_entry.get("d"):
                 try:
-                    sch_time_str = schedule_entry["d"] # "HH:MM"
+                    sch_time_str = schedule_entry["d"]  # "HH:MM"
                     sch_day_str = schedule_entry.get("d_day", "1")
                     sch_time = datetime.datetime.strptime(sch_time_str, "%H:%M").time()
                     sch_day_offset = int(sch_day_str)
-                    
+
                     # Calculate datetime
-                    sch_date = train_scheduled_date + datetime.timedelta(days=(sch_day_offset - 1))
+                    sch_date = train_scheduled_date + datetime.timedelta(
+                        days=(sch_day_offset - 1)
+                    )
                     sch_dt = datetime.datetime.combine(sch_date, sch_time)
                     dept_time = int(sch_dt.timestamp())
-                    print(f"DEBUG: Using schedule fallback for Dept at {stn_obj.stn_code}: {sch_dt}")
+                    print(
+                        f"DEBUG: Using schedule fallback for Dept at {stn_obj.stn_code}: {sch_dt}"
+                    )
                 except Exception as e:
-                    print(f"DEBUG: Schedule fallback failed for Dept at {stn_obj.stn_code}: {e}")
+                    print(
+                        f"DEBUG: Schedule fallback failed for Dept at {stn_obj.stn_code}: {e}"
+                    )
 
         # Normalize times to timestamps (int)
         if isinstance(arr_time, datetime.datetime):
@@ -434,35 +466,41 @@ for train_no, train in live_trains_map.items():
     # 6. Horizon Filter
     # Check if the train enters the network within the horizon
     should_add_train = False
-    
+
     if stops_data:
         # Find first valid time point to determine entry
-        first_valid_stop = next((s for s in stops_data if s['arr'] is not None), None)
-        
+        first_valid_stop = next((s for s in stops_data if s["arr"] is not None), None)
+
         if first_valid_stop:
-            entry_time = first_valid_stop['arr']
+            entry_time = first_valid_stop["arr"]
             horizon_time = current_time + (scheduling_horizon * 60)
-            
+
             if entry_time > horizon_time:
-                 print(f"Skipping {train['train_no']} - Enters network at {datetime.datetime.fromtimestamp(entry_time)} (Horizon: {datetime.datetime.fromtimestamp(horizon_time)})")
-                 continue
+                print(
+                    f"Skipping {train['train_no']} - Enters network at {datetime.datetime.fromtimestamp(entry_time)} (Horizon: {datetime.datetime.fromtimestamp(horizon_time)})"
+                )
+                continue
             else:
-                 print(f"Including {train['train_no']} - Enters at {datetime.datetime.fromtimestamp(entry_time)}")
-                 should_add_train = True
+                print(
+                    f"Including {train['train_no']} - Enters at {datetime.datetime.fromtimestamp(entry_time)}"
+                )
+                should_add_train = True
         else:
-             print(f"Skipping {train['train_no']} - No valid time points after interpolation.")
-             continue
+            print(
+                f"Skipping {train['train_no']} - No valid time points after interpolation."
+            )
+            continue
     else:
         print(f"Skipping {train['train_no']} - No stops generated.")
         continue
 
-    # 7. Add to Simulation    
+    # 7. Add to Simulation
     if should_add_train:
         sim_train = Train(
             sim,
             f"{train['train_no']} - {train['train_name']}",
             [],
-            max_speed=110, # Default higher speed
+            max_speed=110,  # Default higher speed
             priority=1,
             length=300,
             weight=1173,
@@ -471,23 +509,25 @@ for train_no, train in live_trains_map.items():
             accel_mps2=0.5,
             decel_mps2=0.5,
         )
-        
+
         stops_added_count = 0
         for data in stops_data:
             if data["arr"] is not None:
                 arr_min = max(0, data["arr"] - current_time) // 60
                 dept_min = max(0, data["dept"] - current_time) // 60
-                
+
                 sim_train.schedule_stop(data["stn"], arr_min, dept_min, 1)
                 stops_added_count += 1
                 print(
                     f"Scheduled stop at {data['stn'].stn_code} ({'Interp' if data.get('is_interpolated') else 'Real'}) Arr: {arr_min} Dept: {dept_min}"
                 )
-        
+
         if stops_added_count == 0:
-            print(f"[WARNING] Created train {train['train_no']} but added 0 stops! (arr times were None or < current? check logic)")
+            print(
+                f"[WARNING] Created train {train['train_no']} but added 0 stops! (arr times were None or < current? check logic)"
+            )
             # Might want to remove from sim if 0 stops?
-            # But we already created it. 
+            # But we already created it.
 
     print(
         f"Train {train['train_no']} processed. Stops added: {stops_added_count if 'stops_added_count' in locals() else 0}"

@@ -1,16 +1,33 @@
 import random
+from typing import TYPE_CHECKING
 
 import simpy
 import simpy.resources.resource
 
 from train_lib.physics import total_headway, total_runtime
 
-from .constants import *
+if TYPE_CHECKING:
+    from train_lib.simulation import Simulation
+
+from .constants import (
+    APPROACH_TIME,
+    DEPARTURE_CLEAR_TIME,
+    ENABLE_RANDOM_DELAYS,
+    ARRIVAL,
+    DEPARTURE,
+    ENTRY,
+    EXIT,
+)
 
 import simpy
 import heapq
 from collections import deque, namedtuple
-from train_lib.heuristics import capacity_conflict_hold, meet_conflict_hold, pass_conflict_hold
+from train_lib.heuristics import (
+    capacity_conflict_hold,
+    meet_conflict_hold,
+    pass_conflict_hold,
+)
+
 
 # Simple token object returned to the requester
 class BidirToken:
@@ -18,6 +35,7 @@ class BidirToken:
         self.uid = uid
         self.direction = direction
         self.meta = request_meta  # anything you want (train, priority, etc.)
+
 
 class BidirectionalResource:
     """
@@ -29,18 +47,23 @@ class BidirectionalResource:
         in a new cycle to collect more arrivals (batching).
       - Trains receive tokens and must call release(token) when leaving the critical region.
     """
+
     def __init__(self, env: simpy.Environment, wait_window: float = 0.0):
         self.env = env
         self.wait_window = wait_window
         self._queues = {+1: [], -1: []}  # min-heaps: (priority, arrival_seq, Request)
         self._arrival_seq = 0
-        self._current_direction = None   # +1 or -1 while cycle active, else None
-        self._active_count = 0           # how many tokens outstanding in current cycle
+        self._current_direction = None  # +1 or -1 while cycle active, else None
+        self._active_count = 0  # how many tokens outstanding in current cycle
         self._cycle_process = None
-        self._waiting_event = env.event()  # triggered when something arrives (used internally)
+        self._waiting_event = (
+            env.event()
+        )  # triggered when something arrives (used internally)
 
         # Named tuple for queued requests
-        self._Queued = namedtuple("_Queued", ["priority", "arrival_seq", "train", "event"])
+        self._Queued = namedtuple(
+            "_Queued", ["priority", "arrival_seq", "train", "event"]
+        )
 
     def request(self, train, direction: int, priority: int = 0):
         """
@@ -115,7 +138,10 @@ class BidirectionalResource:
             # if currently in a cycle, wait until active_count==0 and no queued in that direction
             if self._current_direction is not None:
                 # wait until active_count==0 *and* no queued items in current direction
-                while not (self._active_count == 0 and self._queues[self._current_direction] == []):
+                while not (
+                    self._active_count == 0
+                    and self._queues[self._current_direction] == []
+                ):
                     # wake when new arrivals or releases happen
                     ev = self._waiting_event
                     yield ev
@@ -154,7 +180,11 @@ class BidirectionalResource:
             # will also be granted immediately by the loop below.
             while self._queues[self._current_direction]:
                 _, _, queued = heapq.heappop(self._queues[self._current_direction])
-                tok = BidirToken(uid=queued.arrival_seq, direction=self._current_direction, request_meta={"train": queued.train})
+                tok = BidirToken(
+                    uid=queued.arrival_seq,
+                    direction=self._current_direction,
+                    request_meta={"train": queued.train},
+                )
                 self._active_count += 1
                 # succeed the event with the token
                 queued.event.succeed(tok)
@@ -166,10 +196,17 @@ class BidirectionalResource:
 
 
 class DecisionSuggestion:
+    SUGGESTIONS: list["DecisionSuggestion"] = []
 
-    SUGGESTIONS: list['DecisionSuggestion'] = []
-
-    def __init__(self, env: simpy.Environment, train_id: str, station_code: str, action: str, hold_time: float, reason: str) -> None:
+    def __init__(
+        self,
+        env: simpy.Environment,
+        train_id: str,
+        station_code: str,
+        action: str,
+        hold_time: float,
+        reason: str,
+    ) -> None:
         self.train_id = train_id
         self.station_code = station_code
         self.action = action
@@ -186,19 +223,29 @@ class DecisionSuggestion:
     def wait(self):
         return self.event
 
+
 class Station:
     STATIONS = []
 
-    def __init__(self, env: simpy.Environment, stn_code: str, tracks: list['Track']) -> None:
+    def __init__(
+        self,
+        env: simpy.Environment,
+        stn_code: str,
+        tracks: list["Track"],
+        is_boundary: bool = False,
+    ) -> None:
         self.stn_code = stn_code
         self.tracks: list[Track] = tracks
         self.env = env
-        self.train_map: dict['Train', tuple['Track', simpy.resources.resource.PriorityRequest]] = {}
-        self.connections: dict['Station', list['BlockSection']] = {}
+        self.is_boundary = is_boundary
+        self.train_map: dict[
+            "Train", tuple["Track", simpy.resources.resource.PriorityRequest]
+        ] = {}
+        self.connections: dict["Station", list["BlockSection"]] = {}
 
-        Station.STATIONS.append(self)
+        # Station.STATIONS.append(self)
 
-    def accept(self, train: 'Train', sp: 'SchedulePoint'):
+    def accept(self, train: "Train", sp: "SchedulePoint"):
         """
         Acquire a suitable platform track as soon as the train arrives.
         We do NOT release here; we keep the request in train_map for live view + later dispatch().
@@ -210,7 +257,7 @@ class Station:
             if cand.length >= train.length_m:
                 track = cand
 
-        if track is None or track.resource.count > 0: # Track is not valid or occupied
+        if track is None or track.resource.count > 0:  # Track is not valid or occupied
             track = self.get_first_available_track(train)
             if track is None:
                 # all suitable tracks busy -> queue on any suitable track; pick the first that fits
@@ -219,8 +266,9 @@ class Station:
                         track = t
                         break
                 if track is None:
-                    raise RuntimeError(f"No track long enough for train {train} at {self.stn_code}")
-
+                    raise RuntimeError(
+                        f"No track long enough for train {train} at {self.stn_code}"
+                    )
 
         # Request the platform (PriorityResource). This will queue if busy.
         req = track.resource.request(priority=train.priority)
@@ -232,14 +280,13 @@ class Station:
         train.log.log(f"Accepted {self.stn_code} on track {track.id}")
         # print(f"{self.env.now}: Accepted {self.stn_code} - {train.id} on track {track.id}")
         # simulate approach to the platform starter (don’t release request!)
-        if sp.expected_platform != 0: # Not main line    
+        if sp.expected_platform != 0:  # Not main line
             yield self.env.timeout(APPROACH_TIME)
 
         # done: the train is now occupying the platform track.
         return req  # keep request handle in case caller wants it too
 
-
-    def get_first_available_track(self, train: 'Train'):
+    def get_first_available_track(self, train: "Train"):
         for track in self.tracks:
             if not track.resource.count and track.length >= train.length_m:
                 return track
@@ -253,8 +300,8 @@ class Station:
     #         if not block.resource.count > 0:
     #             return block
     #     return None
-    
-    def get_block_to(self, next_station: 'Station') -> 'BlockSection | None':
+
+    def get_block_to(self, next_station: "Station") -> "BlockSection | None":
         lst = self.connections.get(next_station, [])
         # return the first available block
         for block in lst:
@@ -263,13 +310,19 @@ class Station:
         # if no block is available, return the first block
         return lst[0] if lst else None
 
-    def dispatch(self, train: 'Train', sp: 'SchedulePoint'):
+    def get_blocks_to(self, next_station: "Station") -> list["BlockSection"]:
+        return (
+            self.connections.get(next_station, [])
+            if next_station in self.connections
+            else []
+        )
+
+    def dispatch(self, train: "Train", sp: "SchedulePoint"):
         """Release the platform after departure, including a small clear time."""
         entry = self.train_map.get(train)
         if not entry:
             return False
         track, req = entry
-
 
         # simulate shunt/starting and clearing the platform starter
         if sp.expected_platform != 0:  # Not main line
@@ -281,23 +334,38 @@ class Station:
 
         return True
 
+
 class Track:
-    def __init__(self, env: simpy.Environment, id: str, has_platform: bool, length: int) -> None:
+    def __init__(
+        self,
+        env: simpy.Environment,
+        id: str,
+        has_platform: bool,
+        length: int,
+        is_mainline: bool,
+    ) -> None:
         self.resource = simpy.PriorityResource(env, capacity=1)
         self.env = env
         self.has_platform = has_platform
+        self.is_mainline = is_mainline
         self.length = length
         self.id = id
 
 
 class BlockSection:
-    def __init__(self, env: simpy.Environment, 
-                 name: str, from_station: Station, to_station: Station, 
-                 line_speed: int, length_km: int,
-                 bidirectional: bool = False, 
-                 electric: bool = False,
-                 signal_num: int = 2,
-                 signal_aspects: int = 2) -> None:
+    def __init__(
+        self,
+        env: simpy.Environment,
+        name: str,
+        from_station: Station,
+        to_station: Station,
+        line_speed: int,
+        length_km: int,
+        bidirectional: bool = False,
+        electric: bool = False,
+        signal_num: int = 2,
+        signal_aspects: int = 2,
+    ) -> None:
         self.name = name
         self.from_station = from_station
         self.to_station = to_station
@@ -309,17 +377,20 @@ class BlockSection:
         self.electric = electric
         self.signal_aspects = signal_aspects
 
-        self.resource = simpy.PriorityResource(env, capacity=1) # max(signal_num-1, 1)
+        self.resource = simpy.PriorityResource(env, capacity=1)  # max(signal_num-1, 1)
         self.bidir_resource = BidirectionalResource(env, wait_window=1.0)
         # one-way only
         self.from_station.connections.setdefault(to_station, []).append(self)
         if bidirectional:
             self.to_station.connections.setdefault(from_station, []).append(self)
 
-        self.occupied_train: tuple['Train', simpy.resources.resource.PriorityRequest] | None = None
+        self.occupied_train: (
+            tuple["Train", simpy.resources.resource.PriorityRequest] | None
+        ) = None
 
-
-    def _run_minutes(self, train: 'Train', should_accelerate: bool, should_decelerate: bool) -> float:
+    def _run_minutes(
+        self, train: "Train", should_accelerate: bool, should_decelerate: bool
+    ) -> float:
         """
         Compute run time (minutes) over this block/section using a simple
         accel–cruise–decel model with unit-consistent kinematics.
@@ -331,14 +402,20 @@ class BlockSection:
         - train.accel_mps2, train.decel_mps2 in m/s^2
         """
         print(should_accelerate, should_decelerate, "Block Section")
-        total_min = total_runtime(self.length_km, self.line_speed, train.max_speed, train.accel_mps2, train.decel_mps2,
-                                self._headway_mins(train, should_accelerate),
-                                  should_accelerate, should_decelerate)
+        total_min = total_runtime(
+            self.length_km,
+            self.line_speed,
+            train.max_speed,
+            train.accel_mps2,
+            train.decel_mps2,
+            self._headway_mins(train, should_accelerate),
+            should_accelerate,
+            should_decelerate,
+        )
 
         return total_min
-    
-    def _headway_mins(self, train: 'Train', should_accelerate: bool) -> float:
 
+    def _headway_mins(self, train: "Train", should_accelerate: bool) -> float:
         """
         Compute the headway time (minutes) for this block/section.
 
@@ -348,9 +425,19 @@ class BlockSection:
         - train.max_speed in km/h
         - train.accel_mps2, train.decel_mps2 in m/s^2
         """
-        total_min = total_headway(train.max_speed, self.line_speed, train.length_m, train.accel_mps2, train.decel_mps2, self.signal_aspects, buffer_min=1.0, block_km=self.length_km, should_accelerate=should_accelerate)
+        total_min = total_headway(
+            train.max_speed,
+            self.line_speed,
+            train.length_m,
+            train.accel_mps2,
+            train.decel_mps2,
+            self.signal_aspects,
+            buffer_min=1.0,
+            block_km=self.length_km,
+            should_accelerate=should_accelerate,
+        )
         return total_min
-    
+
     def direction_from(self, from_station, to_station):
         # return +1 if to_station index > from_station index else -1
         try:
@@ -374,34 +461,52 @@ class BlockSection:
     #         self.resource.release(req)
     #         self.occupied_train = None
 
-    def enter(self, train: 'Train'):
+    def enter(self, train: "Train"):
         req = self.resource.request(priority=train.priority)
         yield req
         self.occupied_train = (train, req)
 
-    def exit(self, train: 'Train'):
+    def exit(self, train: "Train"):
 
-        occupied_train, req = self.occupied_train if self.occupied_train else (None, None)
+        occupied_train, req = (
+            self.occupied_train if self.occupied_train else (None, None)
+        )
 
         if occupied_train and req and occupied_train == train:
             self.occupied_train = None
             self.resource.release(req)
         yield self.env.timeout(0)  # just to make this a generator
-        return 
+        return
+
 
 class Train:
-
     TRAINS = []
 
-    def __init__(self, env: simpy.Environment, id: str, schedule: list['SchedulePoint'], max_speed: int, priority: int, length: int, weight: int, initial_delay: int, 
-                 hp: float, accel_mps2: float | None = None, decel_mps2: float | None = None) -> None:
-        self.env = env
+    def __init__(
+        self,
+        sim: "Simulation",
+        id: str,
+        schedule: list["SchedulePoint"],
+        max_speed: int,
+        priority: int,
+        length: int,
+        weight: int,
+        initial_delay: int,
+        hp: float,
+        accel_mps2: float | None = None,
+        decel_mps2: float | None = None,
+    ) -> None:
+        self.env = sim
         self.id = id
         self.schedule = schedule
         self.max_speed = max_speed
         self.priority = priority
         self.length_m = length
-        self.initial_delay = initial_delay + random.randint(0, 15) if random.random() < 0.5 and ENABLE_RANDOM_DELAYS else initial_delay
+        self.initial_delay = (
+            initial_delay + random.randint(0, 15)
+            if random.random() < 0.5 and ENABLE_RANDOM_DELAYS
+            else initial_delay
+        )
         self.running_delay = self.initial_delay
         self.schedule_pointer = 0
         self.weight = weight
@@ -409,30 +514,38 @@ class Train:
         self.direction = "UP"
         self.hp = hp
 
-        self.accel_mps2 = accel_mps2 if accel_mps2 else (0.9 if hp / weight >= 20 else 0.7 if hp / weight >= 10 else 0.5)  # simple heuristic
-        self.decel_mps2 = decel_mps2 if decel_mps2 else (0.9 if hp / weight >= 20 else 0.7 if hp / weight >= 10 else 0.5)  # simple heuristic
+        self.accel_mps2 = (
+            accel_mps2
+            if accel_mps2
+            else (0.9 if hp / weight >= 20 else 0.7 if hp / weight >= 10 else 0.5)
+        )  # simple heuristic
+        self.decel_mps2 = (
+            decel_mps2
+            if decel_mps2
+            else (0.9 if hp / weight >= 20 else 0.7 if hp / weight >= 10 else 0.5)
+        )  # simple heuristic
 
         print(accel_mps2, decel_mps2)
 
         self.current_block: BlockSection | None = None
         self._start_time = 0
+        sim.add_train(self)
         Train.TRAINS.append(self)
-        env.process(self.run())
-    
+
     def start_time(self, _start_time: int):
         self._start_time = _start_time
 
-    def should_accelerate(self, next_sp: 'SchedulePoint', dwell_time: float) -> bool:
+    def should_accelerate(self, next_sp: "SchedulePoint", dwell_time: float) -> bool:
         if dwell_time > 0:
             return True
         return False
 
-    def should_decelerate(self, next_sp: 'SchedulePoint') -> bool:
+    def should_decelerate(self, next_sp: "SchedulePoint") -> bool:
         if next_sp.layover_time > 0:
             return True
         return False
-    
-    def prev_schedule_point(self, sp: 'SchedulePoint') -> 'SchedulePoint | None':
+
+    def prev_schedule_point(self, sp: "SchedulePoint") -> "SchedulePoint | None":
         if sp:
             idx = self.schedule.index(sp)
             if idx > 0:
@@ -440,8 +553,8 @@ class Train:
         if self.schedule_pointer == 0:
             return None
         return self.schedule[self.schedule_pointer - 1]
-    
-    def next_schedule_point(self, sp: 'SchedulePoint') -> 'SchedulePoint | None':
+
+    def next_schedule_point(self, sp: "SchedulePoint") -> "SchedulePoint | None":
         if sp:
             idx = self.schedule.index(sp)
             if idx + 1 < len(self.schedule):
@@ -450,14 +563,21 @@ class Train:
             return None
         return self.schedule[self.schedule_pointer + 1]
 
-    def sp_for_station(self, station: 'Station') -> 'SchedulePoint | None':
+    def sp_for_station(self, station: "Station") -> "SchedulePoint | None":
         return next((sp for sp in self.schedule if sp.station == station), None)
 
     def run(self):
         current_sp = self.schedule[self.schedule_pointer]
         map_enter_delay = (current_sp.arrival_time - self.env.now) + self.initial_delay
+
+        self.log.log(
+            f"Initialized train {self.id} - Waiting to enter at {current_sp.station.stn_code}"
+        )
+
         if map_enter_delay > 0:
             yield self.env.timeout(map_enter_delay)
+
+        self.log.log(f"Entering network at {current_sp.station.stn_code}")
 
         while self.schedule_pointer < len(self.schedule):
             # prev_sp = self.schedule[self.schedule_pointer - 1] if self.schedule_pointer > 0 else None
@@ -477,8 +597,10 @@ class Train:
 
             self.running_delay = self.env.now - current_sp.arrival_time
             # Dwell/layover
-            dwell_time = max(current_sp.departure_time - self.env.now, current_sp.layover_time)
-            print(dwell_time)
+            dwell_time = max(
+                current_sp.departure_time - self.env.now, current_sp.layover_time
+            )
+            print(f"Dwell time: {dwell_time}")
             # Wait for departure time else if running late, wait for layover time
             if dwell_time > 0:
                 yield self.env.timeout(dwell_time)
@@ -487,16 +609,25 @@ class Train:
             next_sp = self.get_next_schedule_point()
             if next_sp is None:
                 # terminal: dispatch to yard or just clear platform
-                self.log.log(f"Terminating at {current_sp.station.stn_code}")
+                self.log.log(
+                    f"Terminating at {current_sp.station.stn_code} - Exiting Network"
+                )
                 self.log.mark_departure(current_sp.station)
-                # print(f"{self.env.now}: Terminating at {current_sp.station.stn_code} - {self.id}")
                 # clear the platform
                 yield from current_sp.station.dispatch(self, current_sp)
                 break
 
             block = current_sp.station.get_block_to(next_sp.station)
             if block is None:
-                raise RuntimeError(f"No block from {current_sp.station.stn_code} to {next_sp.station.stn_code}")
+                # If no block is found, assume the next station is outside the simulation boundary
+                self.log.log(
+                    f"No block to {next_sp.station.stn_code} (Outside Network) - Diverging out"
+                )
+                self.log.mark_departure(current_sp.station)
+                yield from current_sp.station.dispatch(self, current_sp)
+                # Simulate traversing out of the network (e.g., into a virtual block)
+                yield self.env.timeout(5)  # Arbitrary time to clear the boundary
+                break
 
             # IMPORTANT: Reserve the next block while still on the platform.
             # We'll queue here if needed, without fouling the main line.
@@ -508,34 +639,62 @@ class Train:
             should_accelerate = self.should_accelerate(next_sp, dwell_time)
             should_decelerate = self.should_decelerate(next_sp)
 
-            print(f"Should Accelerate: {should_accelerate}, Should Decelerate: {should_decelerate}, Train: {self.id}, Dwell Time: {dwell_time}")
+            print(
+                f"Should Accelerate: {should_accelerate}, Should Decelerate: {should_decelerate}, Train: {self.id}, Dwell Time: {dwell_time}"
+            )
 
             # Leave the platform now (starter clears)
             # print(f"{self.env.now}: Departing {current_sp.station.stn_code} - {self.id} - {block.name}")
-            self.log.log(f"Departing {current_sp.station.stn_code} towards {next_sp.station.stn_code} via {block.name}")
-            
+            self.log.log(
+                f"Departing {current_sp.station.stn_code} towards {next_sp.station.stn_code} via {block.name}"
+            )
+
             next_block = current_sp.station.get_block_to(next_sp.station)
-            prev_block = prev_sp.station.get_block_to(current_sp.station) if prev_sp else None
+            prev_block = (
+                prev_sp.station.get_block_to(current_sp.station) if prev_sp else None
+            )
 
             capacity_hold = capacity_conflict_hold(self, current_sp)
-            meet_hold = meet_conflict_hold(self, next_block, current_sp) if next_block else 0
-            pass_hold = pass_conflict_hold(self, prev_block, current_sp) if prev_block else 0
+            meet_hold = (
+                meet_conflict_hold(self, next_block, current_sp) if next_block else 0
+            )
+            pass_hold = (
+                pass_conflict_hold(self, prev_block, current_sp) if prev_block else 0
+            )
 
-            print("Capacity Hold:", capacity_hold, "Meet Hold:", meet_hold, "Pass Hold:", pass_hold)
+            print(
+                "Capacity Hold:",
+                capacity_hold,
+                "Meet Hold:",
+                meet_hold,
+                "Pass Hold:",
+                pass_hold,
+            )
 
             hold_time = max(capacity_hold, meet_hold, pass_hold)
 
             # hold_time = max(0, capacity_conflict_hold(self, current_sp), meet_conflict_hold(self, next_block, current_sp) if next_block else 0, pass_conflict_hold(self, prev_block, current_sp) if prev_block else 0) / 60.0
             print("Calculated Hold Time:", hold_time)
             if hold_time > 0:
-                sugg = DecisionSuggestion(self.env, self.id, current_sp.station.stn_code, "HOLD", hold_time, "Conflict detected")
+                sugg = DecisionSuggestion(
+                    self.env,
+                    self.id,
+                    current_sp.station.stn_code,
+                    "HOLD",
+                    hold_time,
+                    "Conflict detected",
+                )
                 DecisionSuggestion.SUGGESTIONS.append(sugg)
                 action = yield sugg.wait()
                 if action == "ACCEPT":
-                    self.log.log(f"Hold time accepted for {self.id} at {current_sp.station.stn_code}: {hold_time} mins")
+                    self.log.log(
+                        f"Hold time accepted for {self.id} at {current_sp.station.stn_code}: {hold_time} mins"
+                    )
                     yield self.env.timeout(hold_time)
                 else:
-                    self.log.log(f"Hold time rejected for {self.id} at {current_sp.station.stn_code}")
+                    self.log.log(
+                        f"Hold time rejected for {self.id} at {current_sp.station.stn_code}"
+                    )
 
             # Acquire the block, but don't start timing until we leave platform:
             # We can emulate this by first acquiring, then dispatch, then run+headway while holding.
@@ -552,7 +711,7 @@ class Train:
             # direction = block.direction_from(current_sp.station, next_sp.station)
             # if not direction:
             #     print("ERROR --- SOMETHIGN WENT TERRIBLY WRONG")
-            #     return 
+            #     return
 
             # Acquire the bidirectional resource for the block
             # req = yield block.bidir_resource.request(self, direction, priority=self.priority)
@@ -561,13 +720,30 @@ class Train:
             self.current_block = block
 
             try:
-                random_delay = random.uniform(-5, probability_based_delay(self.priority))
-                run = block._run_minutes(self, should_accelerate, should_decelerate) + (random_delay if ENABLE_RANDOM_DELAYS else 0)
+                random_delay = random.uniform(
+                    -5, probability_based_delay(self.priority)
+                )
+                run = block._run_minutes(self, should_accelerate, should_decelerate) + (
+                    random_delay if ENABLE_RANDOM_DELAYS else 0
+                )
                 print(f"[{self.id}] Runtime: {run}")
-                yield self.env.timeout(run)
-                self.log.log(f"Exited {block.name} - approaching {next_sp.station.stn_code}")
+                yield self.env.timeout(abs(run))
+                self.log.log(
+                    f"Exited {block.name} - approaching {next_sp.station.stn_code}"
+                )
                 headway = block._headway_mins(self, should_accelerate)
-                print("Headway:", headway, "Block:", block.name, "Train:", self.id, self.max_speed, self.length_m, self.hp, block.signal_aspects)
+                print(
+                    "Headway:",
+                    headway,
+                    "Block:",
+                    block.name,
+                    "Train:",
+                    self.id,
+                    self.max_speed,
+                    self.length_m,
+                    self.hp,
+                    block.signal_aspects,
+                )
                 yield self.env.timeout(headway)
             finally:
                 self.log.mark_exit_block(block)
@@ -580,8 +756,8 @@ class Train:
             # Next station’s platform will be taken in the next loop iteration by move_to_schedule_point(next_sp)
             self.current_block = None
             self.schedule_pointer += 1
-        
-    def move_to_schedule_point(self, sp: 'SchedulePoint'):
+
+    def move_to_schedule_point(self, sp: "SchedulePoint"):
         # travel_time = sp.arrival_time - self.env.now
         # if travel_time > 0:
         #     yield self.env.timeout(travel_time)
@@ -589,51 +765,81 @@ class Train:
         self.log.mark_arrival(sp.station)
         sp.mark_arrival()
         yield from sp.station.accept(self, sp)
-    
+
     def set_direction(self, direction: str):
         self.direction = direction
 
-    def get_next_schedule_point(self) -> 'SchedulePoint | None':
-        return self.schedule[self.schedule_pointer + 1] if self.schedule_pointer + 1 < len(self.schedule) else None
+    def get_next_schedule_point(self) -> "SchedulePoint | None":
+        return (
+            self.schedule[self.schedule_pointer + 1]
+            if self.schedule_pointer + 1 < len(self.schedule)
+            else None
+        )
 
-    def schedule_stop(self, station: Station, arrival_time: int, departure_time: int, expected_platform: int = 0, layover_time: int | None = None) -> 'SchedulePoint':
+    def schedule_stop(
+        self,
+        station: Station,
+        arrival_time: int,
+        departure_time: int,
+        expected_platform: int = 0,
+        layover_time: int | None = None,
+    ) -> "SchedulePoint":
         # Calculate the layover time from arrival and departure, if not given
-        layover_time = layover_time if layover_time is not None else max(0, departure_time - arrival_time)
-        sp = SchedulePoint(station, self._start_time + arrival_time, self._start_time + departure_time, layover_time, expected_platform)
+        layover_time = (
+            layover_time
+            if layover_time is not None
+            else max(0, departure_time - arrival_time)
+        )
+        sp = SchedulePoint(
+            station,
+            self._start_time + arrival_time,
+            self._start_time + departure_time,
+            layover_time,
+            expected_platform,
+        )
         self.schedule.append(sp)
         return sp
 
 
 class SchedulePoint:
-    def __init__(self, station: Station, arrival_time: int, departure_time: int, layover_time: int, expected_platform: int) -> None:
+    def __init__(
+        self,
+        station: Station,
+        arrival_time: int,
+        departure_time: int,
+        layover_time: int,
+        expected_platform: int,
+    ) -> None:
         self.station = station
         self.arrival_time = arrival_time
         self.departure_time = departure_time
         self.layover_time = layover_time
         self.expected_platform = expected_platform
 
-        self.actual_arrival_time = -1.0 # UNSET
-        self.actual_departure_time = -1.0 # UNSET
-    
+        self.actual_arrival_time = -1.0  # UNSET
+        self.actual_departure_time = -1.0  # UNSET
 
     def mark_arrival(self):
         self.actual_arrival_time = self.station.env.now
 
     def mark_departure(self):
         self.actual_departure_time = self.station.env.now
-    
+
     @property
     def dwell_time(self):
 
         if self.actual_arrival_time == -1.0:
             print("[WARN] Train hasn't arrived, returning scheduled layover time.")
             return self.layover_time
-        
+
         if self.actual_departure_time == -1.0:
             print("[WARN] Train hasn't departed from station yet.")
-            return max(self.station.env.now - self.actual_arrival_time, self.layover_time)
+            return max(
+                self.station.env.now - self.actual_arrival_time, self.layover_time
+            )
 
         return self.actual_departure_time - self.actual_arrival_time
+
 
 class TrainLog:
     def __init__(self, train: Train) -> None:
@@ -643,19 +849,100 @@ class TrainLog:
 
     def log(self, message: str) -> None:
         self.entries.append((self.train.env.now, self.train.id, message))
-    
+
     def mark_arrival(self, station: Station):
         # self.entries.append((self.train.env.now, self.train.id, f"Entering {station.stn_code}"))
-        self.marks.append((self.train.env.now, self.train.id, ARRIVAL, station.stn_code))
-    
+        self.marks.append(
+            (self.train.env.now, self.train.id, ARRIVAL, station.stn_code)
+        )
+
     def mark_departure(self, station: Station):
-        self.marks.append((self.train.env.now, self.train.id, DEPARTURE, station.stn_code))
+        self.marks.append(
+            (self.train.env.now, self.train.id, DEPARTURE, station.stn_code)
+        )
 
     def mark_entry_block(self, block: BlockSection):
         self.marks.append((self.train.env.now, self.train.id, ENTRY, block.name))
-    
+
     def mark_exit_block(self, block: BlockSection):
         self.marks.append((self.train.env.now, self.train.id, EXIT, block.name))
+
+
+class Network:
+    def __init__(
+        self,
+        sim: "Simulation",
+        *,
+        stations: list[Station],
+        block_sections: list[list[BlockSection]],
+        loop_lines: dict[Station, list[Track]],
+    ):
+        self.sim = sim
+        self.stations = stations
+        self.block_sections = block_sections
+        self.loop_lines = loop_lines
+
+    def get_stations(self) -> list[Station]:
+        return self.stations
+
+    def get_loop_lines(self, station: Station) -> list[Track]:
+        return self.loop_lines.get(station, [])
+
+    def get_block_sections(
+        self, from_stn: Station, to_stn: Station
+    ) -> list[BlockSection]:
+        return from_stn.get_blocks_to(to_stn)
+
+    def get_stations_between(self, from_stn: Station, to_stn: Station) -> list[Station]:
+        # BFS to find path between from_stn and to_stn
+        from collections import deque
+
+        queue: deque[tuple[Station, list[Station]]] = deque()
+        queue.append((from_stn, [from_stn]))
+        visited = set()
+        visited.add(from_stn.stn_code)
+
+        while queue:
+            current_stn, path = queue.popleft()
+            if current_stn == to_stn:
+                return path
+
+            for block in current_stn.connections.values():
+                for next_block in block:
+                    next_stn = (
+                        next_block.to_station
+                        if next_block.from_station == current_stn
+                        else next_block.from_station
+                    )
+                    if next_stn.stn_code not in visited:
+                        visited.add(next_stn.stn_code)
+                        queue.append((next_stn, path + [next_stn]))
+
+        return []
+
+    def get_station_by_code(self, stn_code: str) -> Station | None:
+        for stn in self.stations:
+            if stn.stn_code == stn_code:
+                return stn
+        return None
+
+    def get_block_sections_between(
+        self, from_stn: Station, to_stn: Station
+    ) -> list[BlockSection]:
+        stations_between = self.get_stations_between(from_stn, to_stn)
+        blocks_between = []
+        for i in range(len(stations_between) - 1):
+            u = stations_between[i]
+            v = stations_between[i + 1]
+            blocks = self.get_block_sections(u, v)
+            for block in blocks:
+                if (
+                    block.from_station == u and block.to_station == v
+                ) or block.bidirectional:
+                    blocks_between.append(block)
+            else:
+                print(f"[WARN] No block sections between {u.stn_code} and {v.stn_code}")
+        return blocks_between
 
 
 def probability_based_delay(priority: int) -> int:
